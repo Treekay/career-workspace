@@ -80,7 +80,7 @@ export const importApplicationInput = z
   })
   .superRefine((data, ctx) => {
     if (
-      data.mark === 'SKIP' ||
+      (data.mark === 'SKIP' && data.requestedStage !== 'APPLIED') ||
       (data.mark === 'APPLIED' && data.requestedStage !== 'APPLIED')
     )
       ctx.addIssue({

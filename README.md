@@ -446,9 +446,9 @@ Required: `source` (`seek`, `linkedin`, `other`), nonblank `title` and `company`
 and `requestedStage` (`SAVED` or `APPLIED`). Provide a nonblank string sourceJobId
 or an equivalent `source:id` canonicalKey; SEEK/LinkedIn IDs must be positive
 digit strings. The other fields are optional. `mark` accepts `NONE`, `SAVED`,
-or `APPLIED`; requestedStage controls the handoff. `SKIP` and a contradictory
-APPLIED mark with requestedStage SAVED are rejected. SAVED mark plus requestedStage
-APPLIED is valid because EasySeek keeps its mark and application stage separately.
+or `APPLIED`; requestedStage controls the handoff. `SKIP` is also accepted with
+requestedStage APPLIED because EasySeek keeps browsing marks and application stages
+independent. SKIP or APPLIED marks with requestedStage SAVED are rejected.
 Unknown fields, including notes/artifacts, are rejected.
 
 The response is `{ "outcome": "created|updated|unchanged", "application": ... }`.

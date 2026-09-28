@@ -286,7 +286,11 @@ test('HTTP imports validate payloads and serialize concurrent retries into one r
       (await app.inject('/api/applications/' + id + '/events')).json().length,
       1,
     );
-    const applied = await send({ ...payload, requestedStage: 'APPLIED' });
+    const applied = await send({
+      ...payload,
+      mark: 'SKIP',
+      requestedStage: 'APPLIED',
+    });
     assert.equal(applied.json().application.stage, 'APPLIED');
     const archived = await app.inject({
       method: 'DELETE',

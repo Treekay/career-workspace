@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { registerAnalyticsRoutes } from './analytics/routes.js';
 import { registerApplicationRoutes } from './applications/routes.js';
 import { statSync } from 'node:fs';
 import { sql } from 'drizzle-orm';
@@ -41,5 +42,6 @@ export function buildApp(
     }),
   }));
   registerApplicationRoutes(app, db);
+  registerAnalyticsRoutes(app, db);
   return app;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import { Analytics } from './tracker/Analytics';
 import { Overview } from './tracker/Overview';
 import { Applications } from './tracker/Applications';
 import { ApplicationDetail } from './tracker/Detail';
@@ -210,15 +211,7 @@ export function App() {
             />
             <Route path="/applications" element={<Applications />} />
             <Route path="/applications/:id" element={<ApplicationDetail />} />
-            <Route
-              path="/analytics"
-              element={
-                <Placeholder
-                  title="Analytics"
-                  description="Understand your search once application data is connected."
-                />
-              }
-            />
+            <Route path="/analytics" element={<Analytics />} />
             <Route
               path="/career-ops"
               element={

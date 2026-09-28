@@ -69,7 +69,9 @@ writer in this phase. Keep this unauthenticated development workspace on loopbac
 
 - Overview: six KPI cards, status donut, upcoming actions, waiting list, and fit ranking.
 - Applications: compact cards with filters, search, stage selectors, and an add form.
-- Discover, Analytics, Career Ops: clearly marked future placeholders.
+- Analytics: recorded-path Sankey, conversion rates, stage age, fit ranking,
+  progression scatter, and weekly/monthly application volume.
+- Discover and Career Ops: clearly marked future placeholders.
 - Application detail: /applications/:id with JD snapshot, analysis, artifacts, timeline,
   quick stage changes, and editable notes/next action.
 - Settings / Setup: live API diagnostics for local paths and storage.
@@ -318,3 +320,59 @@ npm run check covers backend history and event-derived stage age. Browser covera
 (npm run test:browser) exercises creation, all stages, filters/search, KPI totals,
 pagination, saved notes, error recovery, timelines, and mobile overflow. Sample
 records live only in the isolated browser-test database, never the workspace DB.
+
+## Analytics
+
+Open /analytics. GET /api/analytics reads a single SQLite snapshot of persisted
+application records and events; there are no schema changes or additional
+migrations for this page. Refresh reloads the data and recalculates elapsed days.
+The endpoint performs no writes, imports, network lookups, scoring, or predictions.
+It reads all records without the application-list pagination limit.
+
+Historical cohorts include archived applications, so archiving does not erase
+outcomes. Active stage-age bars exclude archived, REJECTED, and WITHDRAWN records.
+Fit ranking includes every recorded non-null score, including zero, closed jobs,
+and archived jobs. Archived records are labeled and are not linked to an unavailable
+active detail page.
+
+### Definitions
+
+- **Funnel / Sankey:** only CREATED and STAGE_CHANGED events, in insertion order.
+  Each application's path starts at its first explicit APPLIED event. Skipped
+  stages are not added; reopened/repeated paths remain visible, with consecutive
+  duplicate stages collapsed. Sankey nodes are keyed by event step plus stage,
+  allowing returns to earlier stages without inventing a fixed linear funnel.
+  Ribbons aggregate actual adjacent transitions at that step. A path can end at
+  any node. Exact complete paths and distinct-record counts are listed underneath.
+  Records without an APPLIED event are counted separately and excluded.
+- **Applied → Interview:** distinct records with an INTERVIEW event after an
+  APPLIED event / distinct records with an APPLIED event.
+- **Interview → Offer:** distinct records with OFFERED after INTERVIEW / distinct
+  records with INTERVIEW.
+- **Applied → Offer:** distinct records with OFFERED after APPLIED / distinct
+  records with APPLIED. An offer does not imply an unrecorded interview.
+  Repeated cycles count once per record. Zero denominators produce unavailable
+  rates (—), not 0%. Open cohorts are included, so rates are observed to date.
+- **Waiting time:** whole elapsed days since the latest CREATED/STAGE_CHANGED
+  event matching the current stage. Metadata edits and artifacts do not reset
+  the clock. Missing, mismatched, invalid, or future timestamps display Unknown.
+  Waiting-only means APPLIED or SCREENING; all-active includes other open stages.
+- **Match vs outcome:** X is the persisted fit_score. Y is the furthest explicitly
+  recorded milestone: Saved=0, Preparing=1, Applied=2, Screening=3, Interview=4,
+  Offered=5. This is an ordinal progression proxy, not success probability.
+  Rejected/withdrawn jobs retain prior progression and show their current outcome.
+  Jobs with no milestone history are excluded. The plot requires at least five
+  scored histories, two distinct scores, and two progression values. Otherwise
+  an explanatory empty state appears. Identical coordinates overlap and are
+  counted; no jitter, regression, predicted values, or implied missing steps are
+  added. The expandable observation list preserves each actual record.
+- **Volume:** one count per record on applied_at if valid, otherwise its first
+  APPLIED event date. No date is inferred from a later stage. Weekly buckets start
+  Monday in UTC; monthly buckets start on day one in UTC. Only the earliest-to-
+  latest observed range is charted. Empty intervening periods have an actual zero;
+  no synthetic future periods are added. Undated records are counted separately.
+
+Charts use local CSS/SVG/meter elements. No chart service or cloud dependency is
+introduced. Tests cover the four requested paths, repeat cycles, event ordering,
+archival, missing dates, zero/missing scores, scatter eligibility, UTC date
+boundaries, empty periods, read-only behavior, and datasets above 200 records.

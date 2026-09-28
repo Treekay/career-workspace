@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import type { Application } from './model';
 export async function request<T>(
   url: string,
@@ -6,6 +6,7 @@ export async function request<T>(
 ): Promise<T> {
   const response = await fetch(url, {
     ...init,
+    signal: init.signal ?? AbortSignal.timeout(15000),
     headers: { 'Content-Type': 'application/json', ...init.headers },
   });
   if (!response.ok) {
@@ -20,12 +21,17 @@ export async function request<T>(
   return response.json() as Promise<T>;
 }
 export function useResource<T>(url: string) {
+  const previousUrl = useRef(url);
   const [state, setState] = useState<{ data?: T; error?: string }>({});
   const [version, setVersion] = useState(0);
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
-    setState({});
+    const sameUrl = previousUrl.current === url;
+    previousUrl.current = url;
+    setState((previous) =>
+      sameUrl && previous.data ? { data: previous.data } : {},
+    );
     const timer = setTimeout(() => controller.abort(), 10000);
     request<T>(url, { signal: controller.signal })
       .then((data) => {
@@ -61,7 +67,7 @@ export function useApplications() {
     let active = true;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
-    setState({});
+    setState((previous) => (previous.data ? { data: previous.data } : {}));
     (async () => {
       const rows: Application[] = [];
       for (let offset = 0; ; offset += 200) {
@@ -89,5 +95,12 @@ export function useApplications() {
       clearTimeout(timer);
     };
   }, [version]);
-  return { ...state, reload: () => setVersion((v) => v + 1) };
+  return {
+    ...state,
+    reload: () => setVersion((v) => v + 1),
+    replace: (updated: Application) =>
+      setState((previous) => ({
+        data: previous.data?.map((a) => (a.id === updated.id ? updated : a)),
+      })),
+  };
 }

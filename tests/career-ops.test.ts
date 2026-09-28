@@ -532,3 +532,27 @@ test('missing numeric scores stay unknown, while zero is stored as an actual sco
     }
   }
 });
+
+test('provider connection probes are cached and explicit tests bypass the cache', async () => {
+  const env = environment();
+  const { db, sqlite } = openDatabase(':memory:');
+  const calls: ProcessRequest[] = [];
+  const service = new CareerOpsService(
+    env.config,
+    new ApplicationService(new ApplicationRepository(db)),
+    fake(undefined, calls),
+  );
+  try {
+    assert.equal((await service.connection()).status, 'Connected');
+    const count = calls.length;
+    assert.ok(count > 0);
+    await service.connection();
+    assert.equal(calls.length, count);
+    await service.connection(true);
+    assert.equal(calls.length, count * 2);
+  } finally {
+    await service.close();
+    sqlite.close();
+    rmSync(env.root, { recursive: true, force: true });
+  }
+});

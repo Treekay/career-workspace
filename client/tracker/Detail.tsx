@@ -1,10 +1,11 @@
 import { CareerActions } from '../career-ops/Provider';
-import { useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, useParams, useLocation } from 'react-router-dom';
 import { useResource, request } from './api';
 import { ErrorState, StageBadge, StageControl } from './components';
 import {
   date,
+  dateTime,
   daysInStage,
   fit,
   labels,
@@ -58,7 +59,7 @@ function Editor({
     }
   }
   return (
-    <form className="dashboard-panel" onSubmit={save}>
+    <form id="notes" className="dashboard-panel" onSubmit={save}>
       <h2>Notes & next action</h2>
       <label>
         Next action
@@ -98,6 +99,7 @@ function Editor({
 }
 export function ApplicationDetail() {
   const { id } = useParams();
+  const { hash } = useLocation();
   const application = useResource<Application>('/api/applications/' + id);
   const events = useResource<ApplicationEvent[]>(
     '/api/applications/' + id + '/events',
@@ -105,6 +107,18 @@ export function ApplicationDetail() {
   const artifacts = useResource<Artifact[]>(
     '/api/applications/' + id + '/artifacts',
   );
+  useEffect(() => {
+    if (!application.data || !hash) return;
+    const target = [
+      'overview',
+      'job-description',
+      'analysis',
+      'documents',
+      'timeline',
+      'notes',
+    ].find((id) => '#' + id === hash);
+    if (target) document.getElementById(target)?.scrollIntoView();
+  }, [application.data?.id, hash]);
   function refresh(updated: Application) {
     application.replace(updated);
     events.reload();
@@ -147,7 +161,21 @@ export function ApplicationDetail() {
           <StageControl application={a} onSaved={refresh} />
         </div>
       </div>
-      <div className="detail-facts">
+      <div className="section-links" aria-label="Application sections">
+        {[
+          ['overview', 'Overview'],
+          ['job-description', 'Job Description'],
+          ['analysis', 'Analysis'],
+          ['documents', 'Documents'],
+          ['timeline', 'Timeline'],
+          ['notes', 'Notes'],
+        ].map(([id, label]) => (
+          <a key={id} href={'#' + id}>
+            {label}
+          </a>
+        ))}
+      </div>
+      <div id="overview" className="detail-facts">
         <div>
           <span>Fit</span>
           <strong>{fit(a)}</strong>
@@ -168,9 +196,18 @@ export function ApplicationDetail() {
           </small>
         </div>
       </div>
+      <section className="dashboard-panel compact-summary">
+        <h2>Latest analysis</h2>
+        <p>
+          {a.analysis_summary ||
+            'No analysis yet. Save a JD snapshot, then use Analyze Fit below.'}
+        </p>
+        <a href="#analysis">Open analysis actions →</a> ·{' '}
+        <a href="#notes">Edit next action →</a>
+      </section>
       <div className="detail-grid">
         <div>
-          <section className="dashboard-panel">
+          <section id="job-description" className="dashboard-panel">
             <div className="panel-title">
               <h2>Job Description snapshot</h2>
               <span>
@@ -185,7 +222,7 @@ export function ApplicationDetail() {
               <p className="empty-copy">No job description snapshot saved.</p>
             )}
           </section>
-          <section className="dashboard-panel">
+          <section id="analysis" className="dashboard-panel">
             <h2>Career Ops analysis</h2>
             <CareerActions
               key={a.id}
@@ -203,7 +240,7 @@ export function ApplicationDetail() {
               <p className="empty-copy">No analysis recorded.</p>
             )}
           </section>
-          <section className="dashboard-panel">
+          <section id="documents" className="dashboard-panel">
             <h2>CV / Cover Letter artifacts</h2>
             {artifacts.error ? (
               <ErrorState error={artifacts.error} retry={artifacts.reload} />
@@ -227,7 +264,7 @@ export function ApplicationDetail() {
           </section>
           <Editor key={a.id} application={a} onSaved={application.replace} />
         </div>
-        <section className="dashboard-panel timeline-panel">
+        <section id="timeline" className="dashboard-panel timeline-panel">
           <h2>Application timeline</h2>
           {events.error ? (
             <ErrorState error={events.error} retry={events.reload} />
@@ -253,7 +290,7 @@ export function ApplicationDetail() {
                     <StageBadge stage={event.stage} />
                   )}
                   <time dateTime={event.event_at}>
-                    {new Date(event.event_at).toLocaleString()}
+                    {dateTime(event.event_at)}
                   </time>
                   {event.note && <p>{event.note}</p>}
                 </li>

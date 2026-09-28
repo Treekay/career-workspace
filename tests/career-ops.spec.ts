@@ -28,10 +28,18 @@ test('Career Ops and Settings show provider configuration, connection failures a
   await expect(
     page.getByRole('heading', { name: 'Career Ops', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText('Missing', { exact: true })).toBeVisible();
-  await expect(page.getByText('../career-ops', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Career Ops is unavailable/)).toBeVisible();
+  await page.goto('/settings');
+  await expect(
+    page.getByText('Unavailable', { exact: true }).last(),
+  ).toBeVisible();
+  await expect(
+    page.getByText('../career-ops', { exact: true }).last(),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Test connection' }).click();
-  await expect(page.getByText('Connected', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('Connected', { exact: true }).last(),
+  ).toBeVisible();
   await page.goto('/settings');
   await expect(
     page.getByRole('button', { name: 'Test connection' }),
@@ -47,7 +55,7 @@ test('Career Ops and Settings show provider configuration, connection failures a
     }),
   );
   await page.getByRole('button', { name: 'Test connection' }).click();
-  await expect(page.getByText('Invalid', { exact: true })).toBeVisible();
+  await expect(page.getByText('Error', { exact: true }).last()).toBeVisible();
   await expect(page.getByText(/Codex is not signed in/)).toBeVisible();
 });
 test('detail actions handle unavailable providers, running/completed drafts, and missing JDs', async ({

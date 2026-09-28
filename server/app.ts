@@ -1,3 +1,4 @@
+import { registerWorkspaceRoutes } from './workspace.js';
 import { CareerOpsService } from './career-ops/service.js';
 import { registerCareerOpsRoutes } from './career-ops/routes.js';
 import type { Runner } from './career-ops/process.js';
@@ -26,6 +27,7 @@ export function buildApp(
     dependencies.careerOpsRunner,
   );
   registerCareerOpsRoutes(app, careerOps, config);
+  registerWorkspaceRoutes(app, db, config, careerOps);
   app.addHook('onClose', async () => {
     await careerOps.close();
     sqlite.close();

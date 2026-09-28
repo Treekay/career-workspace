@@ -80,8 +80,23 @@ export class CareerOpsService {
     private applications: ApplicationService,
     private runner: Runner = runProcess,
   ) {}
-  connection() {
-    return connection(this.config, this.runner);
+  private connectionCache?: {
+    at: number;
+    value: ReturnType<typeof connection>;
+  };
+  connection(force = false) {
+    if (
+      !force &&
+      this.connectionCache &&
+      Date.now() - this.connectionCache.at < 30000
+    )
+      return this.connectionCache.value;
+    const value = connection(this.config, this.runner);
+    this.connectionCache = { at: Date.now(), value };
+    value.catch(() => {
+      this.connectionCache = undefined;
+    });
+    return value;
   }
   private directory(appId: string, runId?: string, create = false) {
     applicationId.parse(appId);

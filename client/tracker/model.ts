@@ -1,3 +1,4 @@
+import { formatDate } from '../format';
 import type { ApplicationStage } from '../../shared/tracker';
 export interface Application {
   id: string;
@@ -76,15 +77,9 @@ export function daysInStage(a: Application, now = Date.now()) {
     ),
   );
 }
-export function date(value: string | null) {
-  return value
-    ? new Date(value).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : 'Not set';
-}
+export const date = (value: string | null) => formatDate(value);
+export const dateTime = (value: string | null, timeZone?: string) =>
+  formatDate(value, true, timeZone);
 export function fit(a: Application) {
   return (
     [a.fit_level, a.fit_score === null ? null : a.fit_score + '/100']

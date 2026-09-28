@@ -1,3 +1,4 @@
+import { WorkflowSummary } from '../Workspace';
 import { Link } from 'react-router-dom';
 import { applicationStages } from '../../shared/tracker';
 import { useApplications } from './api';
@@ -24,11 +25,11 @@ export function Overview() {
     .sort((a, b) =>
       (a.next_action_at || '9999').localeCompare(b.next_action_at || '9999'),
     )
-    .slice(0, 6);
+    .slice(0, 3);
   const ranked = active
     .filter((a) => a.fit_score !== null)
     .sort((a, b) => b.fit_score! - a.fit_score!)
-    .slice(0, 6);
+    .slice(0, 3);
   const kpis = [
     ['Total applications', data.length, 'All tracked jobs'],
     ['Active', active.length, 'All non-closed stages'],
@@ -62,7 +63,7 @@ export function Overview() {
         <div>
           <p className="eyebrow">YOUR SEARCH AT A GLANCE</p>
           <h1>Overview</h1>
-          <p>Focus on the opportunities you’ve chosen to follow.</p>
+          <p>Your applications, discoveries, and next actions in one place.</p>
         </div>
         <Link className="primary-button" to="/applications?add=true">
           + Add application
@@ -87,9 +88,10 @@ export function Overview() {
           </article>
         ))}
       </div>
+      <WorkflowSummary />
       {!data.length && (
         <div className="empty-inline">
-          <h2>Your next opportunity starts here.</h2>
+          <h2>Your application workspace starts here.</h2>
           <p>
             Add a job when you decide it is worth following. Your dashboard will
             grow with your search.
@@ -190,7 +192,7 @@ export function Overview() {
             Applied and screening · longest wait first
           </p>
           {waitingRows.length ? (
-            waitingRows.slice(0, 6).map((a) => (
+            waitingRows.slice(0, 3).map((a) => (
               <Link
                 className="action-row"
                 key={a.id}
@@ -215,7 +217,7 @@ export function Overview() {
         <section className="dashboard-panel">
           <div className="panel-title">
             <h2>Fit ranking</h2>
-            <span>Active · top 6</span>
+            <Link to="/analytics">Active · top 3 →</Link>
           </div>
           <p className="panel-caption">Recorded fit scores, out of 100</p>
           {ranked.length ? (

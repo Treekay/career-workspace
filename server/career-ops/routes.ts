@@ -55,7 +55,7 @@ export function registerCareerOpsRoutes(
       });
     });
     routes.get('/api/career-ops/connection', () => service.connection());
-    routes.post('/api/career-ops/test', () => service.connection());
+    routes.post('/api/career-ops/test', () => service.connection(true));
     routes.get<{ Params: { id: string } }>(
       '/api/applications/:id/career-ops/runs',
       (request) => service.list(request.params.id),

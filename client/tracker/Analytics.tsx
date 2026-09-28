@@ -259,6 +259,17 @@ export function Analytics() {
             archived. Historical metrics retain archived applications; active
             charts exclude them.
           </p>
+          <div className="workflow-links">
+            <Link to="/applications?filter=Waiting">
+              Waiting applications →
+            </Link>
+            <Link to="/applications?filter=All&stage=INTERVIEW">
+              Current interviews →
+            </Link>
+            <Link to="/applications?filter=All&stage=OFFERED">
+              Current offers →
+            </Link>
+          </div>
           <div className="conversion-grid">
             {data.conversions.map((metric) => (
               <article className="kpi conversion-card" key={metric.label}>

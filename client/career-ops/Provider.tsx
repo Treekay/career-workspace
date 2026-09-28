@@ -7,7 +7,10 @@ import {
   type CareerConnection,
   type CareerRun,
 } from '../../shared/career-ops';
-import { request } from '../tracker/api';
+import { request, useResource } from '../tracker/api';
+import { ErrorState } from '../tracker/components';
+import { date, dateTime } from '../tracker/model';
+import type { CareerDashboard } from '../../shared/workspace';
 export function CareerConnectionPanel() {
   const [data, setData] = useState<CareerConnection>();
   const [error, setError] = useState('');
@@ -40,7 +43,15 @@ export function CareerConnectionPanel() {
             'tag ' + (data?.status === 'Connected' ? 'success' : 'warning')
           }
         >
-          {busy ? 'Checking…' : data?.status || 'Unavailable'}
+          {busy
+            ? 'Checking…'
+            : data?.status === 'Connected'
+              ? 'Connected'
+              : data?.status === 'Missing'
+                ? 'Unavailable'
+                : data?.status === 'Invalid'
+                  ? 'Error'
+                  : 'Unavailable'}
         </span>
       </div>
       <p>
@@ -72,31 +83,207 @@ export function CareerConnectionPanel() {
   );
 }
 export function CareerOpsPage() {
+  const dashboard = useResource<CareerDashboard>('/api/workspace/career-ops');
+  const connection = useResource<CareerConnection>(
+    '/api/career-ops/connection',
+  );
+  const [selected, setSelected] = useState('');
+  const data = dashboard.data;
+  const application = data?.applications.find((a) => a.id === selected);
+  const pending =
+    data?.applications.filter(
+      (a) => !a.analyzed && !['REJECTED', 'WITHDRAWN'].includes(a.stage),
+    ) || [];
+  useEffect(() => {
+    if (!data?.runs.some((r) => r.status === 'running')) return;
+    const timer = setTimeout(dashboard.reload, 3000);
+    return () => clearTimeout(timer);
+  }, [data]);
+  function identity(id: string) {
+    const a = data?.applications.find((a) => a.id === id);
+    return a ? a.company + ' · ' + a.title : 'Application';
+  }
   return (
     <>
       <div className="tracker-heading">
         <div>
-          <p className="eyebrow">OPTIONAL LOCAL PROVIDER</p>
+          <p className="eyebrow">APPLICATION SUPPORT</p>
           <h1>Career Ops</h1>
-          <p>
-            Use your independent Career Ops workflows on a saved application.
-          </p>
+          <p>Turn saved job descriptions into analysis and useful drafts.</p>
         </div>
+        <Link to="/settings">Provider settings →</Link>
       </div>
-      <CareerConnectionPanel />
-      <section className="dashboard-panel">
-        <h2>Application workflows</h2>
-        <p>
-          Analyze fit, tailor a Markdown CV, draft a cover letter, plan
-          networking, or prepare for an interview from application detail. Save
-          a full JD first.
-        </p>
-        <p>
-          Each run keeps a separate draft and input snapshot. Review drafts
-          before using them.
-        </p>
-        <Link to="/applications">Open applications →</Link>
-      </section>
+      {(connection.error || connection.data?.status !== 'Connected') && (
+        <div className="notice" role="status">
+          {connection.error
+            ? 'Provider status unavailable.'
+            : connection.data
+              ? 'Career Ops is unavailable. Your applications and saved results remain accessible.'
+              : 'Checking provider availability…'}{' '}
+          <Link to="/settings">Check connection in Settings →</Link>
+        </div>
+      )}
+      {dashboard.error ? (
+        <ErrorState error={dashboard.error} retry={dashboard.reload} />
+      ) : !data ? (
+        <p role="status">Loading Career Ops tasks…</p>
+      ) : (
+        <>
+          {data.warnings.map((w) => (
+            <p className="notice" role="alert" key={w}>
+              {w}
+            </p>
+          ))}
+          <section className="dashboard-panel">
+            <div className="panel-title">
+              <h2>Application workflows</h2>
+              <Link to="/applications">Open applications →</Link>
+            </div>
+            {!data.applications.length ? (
+              <p className="empty-copy">
+                No applications yet. Save a role and its Job Description to
+                start an analysis.
+              </p>
+            ) : (
+              <>
+                <label>
+                  Choose application
+                  <select
+                    value={selected}
+                    onChange={(e) => setSelected(e.target.value)}
+                  >
+                    <option value="">Select an application</option>
+                    {data.applications.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.company} · {a.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {application && (
+                  <>
+                    <p>
+                      <Link
+                        to={'/applications/' + application.id + '#analysis'}
+                      >
+                        Open application workspace →
+                      </Link>
+                    </p>
+                    <CareerActions
+                      key={application.id}
+                      applicationId={application.id}
+                      hasJd={application.hasJd}
+                      onComplete={dashboard.reload}
+                    />
+                  </>
+                )}
+              </>
+            )}
+          </section>
+          <div className="dashboard-grid">
+            <section className="dashboard-panel">
+              <div className="panel-title">
+                <h2>Pending analysis</h2>
+                <span>{pending.length} applications</span>
+              </div>
+              <p className="panel-caption">
+                Open applications without a saved analysis summary
+              </p>
+              {!pending.length ? (
+                <p className="empty-copy">
+                  No applications awaiting their first analysis.
+                </p>
+              ) : (
+                pending.map((a) => (
+                  <div className="action-row" key={a.id}>
+                    <Link to={'/applications/' + a.id + '#analysis'}>
+                      <strong>{a.company}</strong>
+                      <small>{a.title}</small>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setSelected(a.id);
+                        document.querySelector('select')?.focus();
+                      }}
+                    >
+                      {a.hasJd ? 'Choose workflow' : 'JD needed'}
+                    </button>
+                  </div>
+                ))
+              )}
+            </section>
+            <section className="dashboard-panel">
+              <div className="panel-title">
+                <h2>Recent results</h2>
+                <button onClick={dashboard.reload}>Refresh results</button>
+              </div>
+              {!data.runs.length ? (
+                <p className="empty-copy">
+                  No workflow runs yet. Completed results and failures will
+                  appear here.
+                </p>
+              ) : (
+                data.runs.slice(0, 12).map((r) => (
+                  <div className="action-row" key={r.id}>
+                    <div>
+                      <Link
+                        to={'/applications/' + r.applicationId + '#analysis'}
+                      >
+                        <strong>
+                          {careerLabels[r.action]} ·{' '}
+                          {r.status.replaceAll('_', ' ')}
+                        </strong>
+                        <small>{identity(r.applicationId)}</small>
+                      </Link>
+                      <small>{dateTime(r.finishedAt || r.startedAt)}</small>
+                      {r.artifactPath && (
+                        <a
+                          className="result-link"
+                          href={
+                            '/api/applications/' +
+                            r.applicationId +
+                            '/career-ops/runs/' +
+                            r.id +
+                            '/document'
+                          }
+                        >
+                          Download result →
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </section>
+          </div>
+          <section className="dashboard-panel">
+            <h2>Generated artifacts</h2>
+            {!data.artifacts.length ? (
+              <p className="empty-copy">
+                No artifacts saved yet. Each completed workflow keeps a separate
+                version.
+              </p>
+            ) : (
+              <ul className="artifact-list">
+                {data.artifacts.map((a) => (
+                  <li key={a.id}>
+                    <Link
+                      to={'/applications/' + a.applicationId + '#documents'}
+                    >
+                      <strong>
+                        {a.type.replaceAll('_', ' ')} ·{' '}
+                        {identity(a.applicationId)}
+                      </strong>
+                    </Link>
+                    <small>{date(a.createdAt)}</small>
+                    <code>{a.path}</code>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </>
+      )}
     </>
   );
 }
@@ -210,7 +397,7 @@ export function CareerActions({
               <strong>
                 {careerLabels[run.action]} · {run.status.replace('_', ' ')}
               </strong>
-              <small>{new Date(run.startedAt).toLocaleString()}</small>
+              <small>{dateTime(run.startedAt)}</small>
               <p>{run.message}</p>
               {run.artifactPath && (
                 <>

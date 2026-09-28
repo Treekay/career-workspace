@@ -69,7 +69,7 @@ test('overview reflects all stages, rankings, and real counts', async ({
   await expect(
     page.getByRole('img', { name: /Application status:/ }),
   ).toBeVisible();
-  await expect(page.locator('.ranking-row')).toHaveCount(6);
+  await expect(page.locator('.ranking-row')).toHaveCount(3);
   await expect(page.locator('.ranking-row').first()).toContainText('Fern Labs');
   await page.setViewportSize({ width: 1440, height: 1100 });
   await page.screenshot({

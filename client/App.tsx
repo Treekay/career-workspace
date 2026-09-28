@@ -1,3 +1,4 @@
+import { IntegrationStatus } from './Workspace';
 import { CareerConnectionPanel, CareerOpsPage } from './career-ops/Provider';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
@@ -14,7 +15,7 @@ const navigation = [
   ['/applications', 'Applications', '03'],
   ['/analytics', 'Analytics', '04'],
   ['/career-ops', 'Career Ops', '05'],
-  ['/settings', 'Settings / Setup', '06'],
+  ['/settings', 'Settings', '06'],
 ];
 function useApi<T>(url: string) {
   const [state, setState] = useState<{ data?: T; error?: string }>({});
@@ -74,7 +75,7 @@ function Settings() {
     <>
       <PageHeading
         eyebrow="Make yourself at home"
-        title="Settings / Setup"
+        title="Settings"
         description="Your tools stay independent. This workspace keeps a reference to where they live."
       />
       {error ? (
@@ -110,6 +111,7 @@ function Settings() {
               ))}
             </div>
           </section>
+          <IntegrationStatus />
           <CareerConnectionPanel />
           <section className="panel">
             <h2>Local storage</h2>

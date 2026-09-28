@@ -12,10 +12,20 @@ import {
   type Application,
 } from './model';
 export function Applications() {
-  const { data, error, reload } = useApplications();
+  const { data, error, reload, replace } = useApplications();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
+  const search = params.get('search') || '';
+  const stage = applicationStages.find((s) => s === params.get('stage')) || '';
+  function setSearch(value: string) {
+    setParams(
+      (p) => {
+        value ? p.set('search', value) : p.delete('search');
+        return p;
+      },
+      { replace: true },
+    );
+  }
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState('');
   const filters = ['Active', 'Waiting', 'Closed', 'All'];
@@ -26,6 +36,7 @@ export function Applications() {
   function setFilter(value: string) {
     setParams((p) => {
       p.set('filter', value);
+      p.delete('stage');
       return p;
     });
   }
@@ -55,6 +66,7 @@ export function Applications() {
   const rows = data?.filter(
     (a) =>
       matches(a, filter) &&
+      (!stage || a.stage === stage) &&
       [a.company, a.title, a.location || '']
         .join(' ')
         .toLowerCase()
@@ -64,7 +76,7 @@ export function Applications() {
     <>
       <div className="tracker-heading">
         <div>
-          <p className="eyebrow">YOUR OPPORTUNITIES</p>
+          <p className="eyebrow">YOUR APPLICATIONS</p>
           <h1>Applications</h1>
           <p>A clear view of every role you’re actively following.</p>
         </div>
@@ -156,6 +168,28 @@ export function Applications() {
             </button>
           ))}
         </div>
+        <label>
+          Stage
+          <select
+            aria-label="Filter by stage"
+            value={stage}
+            onChange={(e) =>
+              setParams((p) => {
+                e.target.value
+                  ? p.set('stage', e.target.value)
+                  : p.delete('stage');
+                return p;
+              })
+            }
+          >
+            <option value="">All stages</option>
+            {applicationStages.map((s) => (
+              <option key={s} value={s}>
+                {labels[s]}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="search-label">
           <span className="sr-only">Search applications</span>
           <input
@@ -222,7 +256,7 @@ export function Applications() {
               </div>
               <div className="application-stage">
                 <StageBadge stage={a.stage} />
-                <StageControl application={a} onSaved={reload} />
+                <StageControl application={a} onSaved={replace} />
               </div>
               <div className="application-next">
                 <span>Next action</span>

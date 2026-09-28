@@ -1,3 +1,5 @@
+import { formatDate } from '../format';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import type { DiscoverData, DiscoverFailure } from '../../shared/discover';
 import { filterJobs, type DiscoverFilters } from './model';
@@ -14,7 +16,24 @@ export function Discover() {
     error?: DiscoverFailure;
   }>({});
   const [version, setVersion] = useState(0);
-  const [filters, setFilters] = useState(initial);
+  const [params, setParams] = useSearchParams();
+  const filters: DiscoverFilters = {
+    scope: params.get('scope') === 'Last 30 Days' ? 'Last 30 Days' : 'Today',
+    fit: ['All', 'HIGH', 'MEDIUM', 'LOW', 'SKIP', 'UNASSESSED'].includes(
+      params.get('fit') || '',
+    )
+      ? params.get('fit')!
+      : initial.fit,
+    source: ['All', 'SEEK', 'LINKEDIN'].includes(params.get('source') || '')
+      ? params.get('source')!
+      : initial.source,
+    sort: ['Recommended', 'Newest', 'Company', 'Fit'].includes(
+      params.get('sort') || '',
+    )
+      ? params.get('sort')!
+      : initial.sort,
+    search: params.get('search') || '',
+  };
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
@@ -48,14 +67,15 @@ export function Discover() {
     key: K,
     value: DiscoverFilters[K],
   ) {
-    setFilters((previous) => ({ ...previous, [key]: value }));
+    setParams(
+      (p) => {
+        p.set(key, value);
+        return p;
+      },
+      { replace: key === 'search' },
+    );
   }
-  const format = (value: string) =>
-    new Date(value).toLocaleString(undefined, {
-      timeZone: data?.timezone,
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    });
+  const format = (value: string) => formatDate(value, true, data?.timezone);
   return (
     <>
       <div className="tracker-heading">
@@ -67,7 +87,12 @@ export function Discover() {
             browsing and marking.
           </p>
         </div>
-        <button onClick={() => setVersion((v) => v + 1)}>Refresh export</button>
+        <div className="form-actions">
+          <Link to="/settings">Integration settings</Link>
+          <button onClick={() => setVersion((v) => v + 1)}>
+            Refresh export
+          </button>
+        </div>
       </div>
       {error ? (
         <section className="notice" role="alert">

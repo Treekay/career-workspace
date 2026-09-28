@@ -632,3 +632,66 @@ snapshots, explicit scoring, versioning, concurrency, manual-edit protection,
 rollback, process limits, setup errors, and UI polling. Automated tests never invoke
 model generation against real candidate data. A live model run additionally needs
 a signed-in CLI with model access.
+
+## Working across the local workspace
+
+The six primary pages share one navigation shell: **Overview**, **Discover**,
+**Applications**, **Analytics**, **Career Ops**, and **Settings**. Settings is the
+single place for integration configuration and connection tests; configuration
+still lives in the root `.env` and takes effect after restarting development.
+There is no setup wizard in this phase.
+
+Responsibilities remain separate:
+
+| Project            | Responsibility                                                                               |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| job-alert-workflow | Discover jobs and produce the review-queue export                                            |
+| EasySeek           | Browse source jobs, mark them, optionally hand off to the local import API                   |
+| career-workspace   | Keep durable application records, stage history, actions, notes and artifact references      |
+| career-ops         | Provide optional deep analysis and application-support drafts through its existing workflows |
+
+Overview combines live application counts, short action/fit lists, persisted
+application activity, and a read-only Discover snapshot. Missing discovery counts
+are shown as unknown, not zero. Historical activity includes archives but does not
+link to unavailable archived detail pages. A Career Ops artifact event identifies
+a saved provider result; no synthetic job-alert run or browser events are created.
+Export timestamps remain file/data timestamps, not claimed ingestion completion.
+
+Applications and Discover store filters in their URLs, so shortcuts, reload and
+browser history retain context. Detail sections are directly addressable with
+`#overview`, `#job-description`, `#analysis`, `#documents`, `#timeline`, and `#notes`.
+Stage changes update the affected card in place and preserve transactional history.
+Analytics links to current stage views are explicitly labeled as current records;
+those views are distinct from historical conversion cohorts.
+
+Career Ops shows open applications without an analysis summary as **Pending
+analysis**, plus persisted run states and artifact references. This is a view of
+existing records, not an automatic queue. Select an application to run any of the
+five existing workflows. Results stay versioned; archived application history is
+retained, while the task dashboard lists current applications. Local file references
+are shown as references; only validated provider result files have download links.
+
+Additional read-only endpoints:
+
+- `GET /api/workspace/summary`: discovery counts/status and latest application events.
+- `GET /api/workspace/career-ops`: application workflow metadata, saved runs, latest 30 artifacts.
+- `GET /api/workspace/integrations`: database, import-endpoint and alert-export health.
+  `?refresh=true` explicitly rechecks the export.
+
+Discovery summary checks and provider connection checks are cached for 30 seconds.
+Settings tests bypass those caches. There is no background integration polling;
+workflow status refreshes only while a known run is running. The application list
+updates individual records after stage saves. Requests have bounded timeouts.
+EasySeek health describes endpoint configuration, **not proof that a browser
+extension is installed or currently connected**. Set the actual workspace API URL
+shown in Settings in EasySeek's optional Career Workspace settings. Configure exact
+extension origins via `IMPORT_EXTENSION_ORIGINS` as documented above.
+
+Discover does not expose “Run alerts now”: no safe execution interface is part of
+this adapter. Run the independent job-alert workflow, then use **Refresh export**.
+Missing/stale exports and unavailable analysis providers leave tracking usable.
+
+Verification: `npm run check` runs backend tests, type checks and production builds;
+`npm run test:browser` exercises navigation, filtering, detail actions, provider
+results and responsive layouts. `npm run format:check` checks formatting. There is
+no separate lint command. No new migration is required for these read-only views.

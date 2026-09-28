@@ -13,7 +13,7 @@ test('navigation, API connection, setup, detail deep link, and missing page', as
     'Applications',
     'Analytics',
     'Career Ops',
-    'Settings / Setup',
+    'Settings',
   ]) {
     await page
       .getByRole('navigation')
@@ -58,7 +58,7 @@ test('mobile layout keeps navigation and content within the viewport', async ({
   ).toBe(true);
   await page
     .getByRole('navigation')
-    .getByRole('link', { name: 'Settings / Setup' })
+    .getByRole('link', { name: 'Settings' })
     .click();
   await expect(page.locator('.project')).toHaveCount(3);
   expect(

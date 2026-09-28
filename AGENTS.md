@@ -42,7 +42,9 @@
 - Resolve relative paths against the project root, never the current shell directory.
 - Keep sibling defaults portable: ../EasySeek, ../job-alert-workflow, ../career-ops.
 - Setup/Settings persist only validated paths, loopback endpoint, exact extension
-  origins and completion state in the ignored .workspace-local.json. Explicit process
+  origins, web port, freshness/timeout limits and completion state in the ignored
+  .workspace-local.json. Settings/Setup are the canonical editor; routine manual .env
+  setup is deprecated. Expose new machine-local options there, not in a second form. Explicit process
   environment wins over saved values, then .env defaults. Changes require restart;
   never move/delete databases or artifacts when changing paths or resetting setup.
 - Setup mutations are loopback/origin guarded, JSON-only, allowlisted and atomic.

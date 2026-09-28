@@ -52,6 +52,13 @@ export function readConfig(
   }
   const originalEnv = env;
   const mapping = {
+    webPort: 'WEB_PORT',
+    discoverStaleHours: 'DISCOVER_STALE_HOURS',
+    careerOpsTimeoutSeconds: 'CAREER_OPS_TIMEOUT_SECONDS',
+    careerOpsDataPath:
+      env.CAREER_OPS_ROOT !== undefined
+        ? 'CAREER_OPS_ROOT'
+        : 'CAREER_OPS_DATA_DIR',
     databasePath: 'DATABASE_PATH',
     easySeekPath: 'EASYSEEK_PATH',
     jobAlertsPath: 'JOB_ALERT_WORKFLOW_PATH',
@@ -115,7 +122,18 @@ export function readConfig(
     localConfigPath,
     localConfigError,
     overriddenSettings,
+    legacySettings: Object.entries(mapping)
+      .filter(([, variable]) => originalEnv[variable] !== undefined)
+      .map(([key, variable]) => ({
+        key,
+        variable,
+        source: overriddenSettings.includes(key) ? 'process' : 'env-file',
+      })),
     settingsValues: {
+      webPort: String(webPort),
+      discoverStaleHours: String(discoverStaleHours),
+      careerOpsTimeoutSeconds: String(careerOpsTimeoutSeconds),
+      careerOpsDataPath: env[mapping.careerOpsDataPath] || '',
       databasePath: env.DATABASE_PATH ?? './data/workspace.db',
       easySeekPath: env.EASYSEEK_PATH ?? '../EasySeek',
       jobAlertsPath: env.JOB_ALERT_WORKFLOW_PATH ?? '../job-alert-workflow',
@@ -128,8 +146,7 @@ export function readConfig(
     } satisfies LocalSettings,
     careerOpsTimeoutSeconds,
     careerOpsCli: env.CAREER_OPS_CODEX_PATH?.trim() || 'codex',
-    careerOpsDataOverride:
-      env.CAREER_OPS_ROOT || env.CAREER_OPS_DATA_DIR || null,
+    careerOpsDataOverride: env[mapping.careerOpsDataPath] || null,
     importExtensionOrigins,
     discoverStaleHours,
     root,

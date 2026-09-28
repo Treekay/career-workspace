@@ -19,7 +19,29 @@ const localPath = z
     (s) => !/[\x00-\x1f]/.test(s) && !/^[a-z]+:\/\//i.test(s),
     'Use a local filesystem path',
   );
+const numeric = (min: number, max: number, integer = false) =>
+  z
+    .string()
+    .trim()
+    .min(1)
+    .refine(
+      (s) =>
+        Number.isFinite(Number(s)) &&
+        Number(s) >= min &&
+        Number(s) <= max &&
+        (!integer || Number.isInteger(Number(s))),
+    )
+    .transform((s) => String(Number(s)));
 export const settingsSchema = z.strictObject({
+  webPort: numeric(1, 65535, true).default('5173'),
+  discoverStaleHours: numeric(0.01, 87600).default('36'),
+  careerOpsTimeoutSeconds: numeric(10, 1800, true).default('600'),
+  careerOpsDataPath: z
+    .string()
+    .trim()
+    .max(4096)
+    .refine((s) => s === '' || localPath.safeParse(s).success)
+    .default(''),
   databasePath: localPath,
   easySeekPath: localPath,
   jobAlertsPath: localPath,
@@ -66,7 +88,18 @@ export const settingsSchema = z.strictObject({
 });
 export type LocalSettings = z.infer<typeof settingsSchema>;
 const documentSchema = z.strictObject({
-  values: settingsSchema.partial(),
+  values: settingsSchema.partial().extend({
+    webPort: settingsSchema.shape.webPort.removeDefault().optional(),
+    discoverStaleHours: settingsSchema.shape.discoverStaleHours
+      .removeDefault()
+      .optional(),
+    careerOpsTimeoutSeconds: settingsSchema.shape.careerOpsTimeoutSeconds
+      .removeDefault()
+      .optional(),
+    careerOpsDataPath: settingsSchema.shape.careerOpsDataPath
+      .removeDefault()
+      .optional(),
+  }),
   completedAt: z.iso.datetime().nullable(),
 });
 export type LocalDocument = z.infer<typeof documentSchema>;

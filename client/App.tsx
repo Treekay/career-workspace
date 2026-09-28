@@ -1,6 +1,5 @@
 import { SetupWizard, SetupConfiguration, SetupPrompt } from './Setup';
-import { IntegrationStatus } from './Workspace';
-import { CareerConnectionPanel, CareerOpsPage } from './career-ops/Provider';
+import { CareerOpsPage } from './career-ops/Provider';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { Discover } from './discover/Discover';
@@ -8,7 +7,7 @@ import { Analytics } from './tracker/Analytics';
 import { Overview } from './tracker/Overview';
 import { Applications } from './tracker/Applications';
 import { ApplicationDetail } from './tracker/Detail';
-import type { HealthResponse, SetupResponse } from '../shared/api';
+import type { HealthResponse } from '../shared/api';
 
 const navigation = [
   ['/', 'Overview', '01'],
@@ -71,62 +70,14 @@ function PageHeading({
   );
 }
 function Settings() {
-  const { data, error, retry } = useApi<SetupResponse>('/api/setup');
   return (
     <>
       <PageHeading
-        eyebrow="Make yourself at home"
+        eyebrow="LOCAL CONFIGURATION"
         title="Settings"
-        description="Your tools stay independent. This workspace keeps a reference to where they live."
+        description="One configuration source for this workspace. Your independent modules keep their own data and credentials."
       />
-      {error ? (
-        <div className="notice" role="alert">
-          {error} <button onClick={retry}>Try again</button>
-        </div>
-      ) : !data ? (
-        <p role="status">Checking local paths…</p>
-      ) : (
-        <>
-          <SetupConfiguration />
-          <section className="panel">
-            <h2>Sibling projects</h2>
-            <p>
-              Edit paths in the configuration form above. Environment overrides
-              remain available. Relative paths start at the workspace root.
-            </p>
-            <div className="project-list">
-              {data.projects.map((project) => (
-                <article className="project" key={project.id}>
-                  <div>
-                    <h3>{project.name}</h3>
-                    <code>{project.configuredPath}</code>
-                    <p className="resolved">{project.path}</p>
-                  </div>
-                  <span
-                    className={
-                      'tag ' + (project.available ? 'success' : 'warning')
-                    }
-                  >
-                    {project.available ? 'Directory found' : 'Not found'}
-                  </span>
-                </article>
-              ))}
-            </div>
-          </section>
-          <IntegrationStatus />
-          <CareerConnectionPanel />
-          <section className="panel">
-            <h2>Local storage</h2>
-            <p>SQLite database</p>
-            <code className="resolved">{data.database.path}</code>
-            <p>
-              Workspace metadata and explicitly tracked applications are stored
-              locally. Finding a project directory does not import data or run
-              its code.
-            </p>
-          </section>
-        </>
-      )}
+      <SetupConfiguration />
     </>
   );
 }

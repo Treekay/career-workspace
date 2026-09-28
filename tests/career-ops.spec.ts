@@ -4,6 +4,14 @@ import { careerActions, careerLabels } from '../shared/career-ops.js';
 test('Career Ops and Settings show provider configuration, connection failures and retesting', async ({
   page,
 }) => {
+  let settingsWrites = 0;
+  page.on('request', (request) => {
+    if (
+      request.url().endsWith('/api/setup/settings') &&
+      request.method() === 'POST'
+    )
+      settingsWrites++;
+  });
   const base = {
     configuredPath: '../career-ops',
     path: 'F:/code/career-ops',
@@ -33,9 +41,9 @@ test('Career Ops and Settings show provider configuration, connection failures a
   await expect(
     page.getByText('Unavailable', { exact: true }).last(),
   ).toBeVisible();
-  await expect(
-    page.getByText('../career-ops', { exact: true }).last(),
-  ).toBeVisible();
+  await expect(page.getByLabel('Career Ops repository path')).toHaveValue(
+    '../career-ops',
+  );
   await page.getByRole('button', { name: 'Test connection' }).click();
   await expect(
     page.getByText('Connected', { exact: true }).last(),
@@ -57,6 +65,7 @@ test('Career Ops and Settings show provider configuration, connection failures a
   await page.getByRole('button', { name: 'Test connection' }).click();
   await expect(page.getByText('Error', { exact: true }).last()).toBeVisible();
   await expect(page.getByText(/Codex is not signed in/)).toBeVisible();
+  expect(settingsWrites).toBe(0);
 });
 test('detail actions handle unavailable providers, running/completed drafts, and missing JDs', async ({
   page,

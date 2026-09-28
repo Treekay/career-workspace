@@ -73,6 +73,8 @@ export function registerSetupRoutes(
       completedAt: local.completedAt,
       restartRequired,
       overridden: config.overriddenSettings,
+      settingsFile: config.localConfigPath,
+      legacy: config.legacySettings,
       error: configError,
     };
   }
@@ -265,8 +267,13 @@ export function registerSetupRoutes(
     routes.get('/api/setup/state', () => state());
     routes.post('/api/setup/settings', { bodyLimit: 16384 }, (request) => {
       const values = settingsSchema.parse(request.body);
-      if (Number(new URL(values.endpoint).port || '80') === config.webPort)
-        throw new z.ZodError([]);
+      const apiPort = config.overriddenSettings.includes('endpoint')
+        ? config.apiPort
+        : Number(new URL(values.endpoint).port || '80');
+      const webPort = config.overriddenSettings.includes('webPort')
+        ? config.webPort
+        : Number(values.webPort);
+      if (apiPort === webPort) throw new z.ZodError([]);
       const local = readLocal(config.localConfigPath);
       writeLocal(config.localConfigPath, {
         values,

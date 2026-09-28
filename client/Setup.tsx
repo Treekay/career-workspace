@@ -1,3 +1,4 @@
+import { CareerConnectionPanel } from './career-ops/Provider';
 import { useEffect, useState, type FormEvent } from 'react';
 import {
   Link,
@@ -22,6 +23,10 @@ const pages = [
   'Final verification',
 ];
 const fields: Record<keyof LocalSettings, string> = {
+  webPort: 'Workspace web port',
+  discoverStaleHours: 'Discover freshness window (hours)',
+  careerOpsTimeoutSeconds: 'Career Ops timeout (seconds)',
+  careerOpsDataPath: 'Career Ops data root (blank = auto-detect)',
   databasePath: 'SQLite database path',
   easySeekPath: 'EasySeek repository path',
   jobAlertsPath: 'Job Alerts repository path',
@@ -144,7 +149,14 @@ export function SetupConfiguration({ wizard = false }: { wizard?: boolean }) {
     }
   }
   if (state.error)
-    return <ErrorState error={state.error} retry={state.reload} />;
+    return (
+      <ErrorState
+        error={
+          'Cannot load local settings. Check the workspace API. ' + state.error
+        }
+        retry={state.reload}
+      />
+    );
   if (!state.data || !values) return <p role="status">Loading local setup…</p>;
   const dirty = JSON.stringify(values) !== JSON.stringify(state.data.values);
   function field(key: keyof LocalSettings) {
@@ -152,6 +164,16 @@ export function SetupConfiguration({ wizard = false }: { wizard?: boolean }) {
       <label key={key}>
         {fields[key]}
         <input
+          type={
+            [
+              'webPort',
+              'discoverStaleHours',
+              'careerOpsTimeoutSeconds',
+            ].includes(key)
+              ? 'number'
+              : 'text'
+          }
+          step={key === 'discoverStaleHours' ? 'any' : undefined}
           value={values![key]}
           disabled={Boolean(busy) || state.data!.overridden.includes(key)}
           onChange={(e) => setValues((v) => ({ ...v!, [key]: e.target.value }))}
@@ -215,6 +237,33 @@ export function SetupConfiguration({ wizard = false }: { wizard?: boolean }) {
         setup state are saved here. Credentials stay in each module’s existing
         storage.
       </p>
+      <details className="dashboard-panel">
+        <summary>Configuration source & compatibility</summary>
+        <p>
+          All workspace settings are saved in{' '}
+          <code>{state.data.settingsFile}</code>. Use Save configuration to
+          capture the current values, including legacy defaults, without
+          changing account authorizations.
+        </p>
+        <p>
+          Manual .env configuration is deprecated. Explicit process overrides
+          remain for development/testing and are shown on their fields.
+          WORKSPACE_CONFIG_PATH only selects the settings file for isolated
+          launches.
+        </p>
+        {Boolean(state.data.legacy?.length) && (
+          <ul>
+            {state.data.legacy.map((item) => (
+              <li key={item.key}>
+                <code>{item.variable}</code>:{' '}
+                {item.source === 'process'
+                  ? 'process override (remove in the launching shell to edit here)'
+                  : 'legacy .env default (superseded after saving)'}
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
       {state.data.completedAt && (
         <p role="status">
           Setup completed {formatDate(state.data.completedAt, true)}. You can
@@ -259,6 +308,7 @@ export function SetupConfiguration({ wizard = false }: { wizard?: boolean }) {
           <section className="dashboard-panel setup-section">
             <h2>Local workspace</h2>
             {field('databasePath')}
+            {field('webPort')}
             <p>
               Relative paths start at the career-workspace root. SQLite
               initializes and applies migrations on startup. Changing the path
@@ -306,8 +356,9 @@ export function SetupConfiguration({ wizard = false }: { wizard?: boolean }) {
                 endpoint below.
               </li>
               <li>
-                Click Test connection in EasySeek. If blocked, copy its
-                extension ID from Chrome and configure the exact origin below.
+                Copy the extension’s exact origin from EasySeek or Chrome into
+                the allowlist below. Save and restart the workspace, then test
+                the connection in EasySeek.
               </li>
             </ol>
             <button
@@ -321,6 +372,18 @@ export function SetupConfiguration({ wizard = false }: { wizard?: boolean }) {
               page. Installation is manual.
             </p>
             {field('endpoint')}
+            <button
+              type="button"
+              onClick={() => void copy(state.data!.effective.endpoint)}
+            >
+              Copy active endpoint for EasySeek
+            </button>
+            <p>
+              EasySeek’s bundled default is 8765; copy this workspace’s active
+              endpoint instead. Enabling the extension and granting localhost
+              permission remain explicit browser actions. A successful health
+              test does not prove imports are authorized.
+            </p>
             {field('extensionOrigins')}
             <p>
               Example origin: chrome-extension:// followed by the extension’s
@@ -340,6 +403,7 @@ export function SetupConfiguration({ wizard = false }: { wizard?: boolean }) {
           <section className="dashboard-panel setup-section">
             <h2>Job Alerts / Gmail</h2>
             {field('jobAlertsPath')}
+            {field('discoverStaleHours')}
             {row(
               'Job Alert repo',
               checks?.alerts.ready,
@@ -374,7 +438,9 @@ export function SetupConfiguration({ wizard = false }: { wizard?: boolean }) {
             <p>
               Connect Gmail through the existing Codex app/plugin UI in
               job-alert-workflow. This workspace neither authenticates Gmail nor
-              stores its tokens.
+              stores its tokens. Search queries, timezone, retention and
+              analysis limits remain in the sibling’s job-ops/config.json; they
+              are workflow policy, not workspace connection settings.
             </p>
             <div className="form-actions">
               <button
@@ -416,6 +482,15 @@ export function SetupConfiguration({ wizard = false }: { wizard?: boolean }) {
             <h2>Career Ops</h2>
             {field('careerOpsPath')}
             {field('careerOpsCli')}
+            {field('careerOpsDataPath')}
+            {field('careerOpsTimeoutSeconds')}
+            <p>
+              Leave the data root blank to use career-ops’ .career-ops-data
+              marker or repository root. A relative override starts at the
+              career-ops repository. Keep the executable as codex to detect it
+              from PATH.
+            </p>
+            <CareerConnectionPanel />
             {row(
               'Career Ops workflow',
               checks?.career.ready,
@@ -536,7 +611,7 @@ export function SetupConfiguration({ wizard = false }: { wizard?: boolean }) {
         <div className="setup-save">
           <button
             type="submit"
-            disabled={Boolean(busy) || !dirty || Boolean(state.data.error)}
+            disabled={Boolean(busy) || Boolean(state.data.error)}
           >
             {busy === 'save' ? 'Saving…' : 'Save configuration'}
           </button>

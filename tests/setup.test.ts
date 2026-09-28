@@ -285,3 +285,63 @@ test('malformed local settings expose recovery status without opening another da
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+test('all runtime controls persist in Settings, validate collisions and preserve legacy-file fallback behavior', async () => {
+  const { root, config } = fixture();
+  const app = buildApp(config);
+  try {
+    const values = (await app.inject('/api/setup/state')).json().values;
+    const next = {
+      ...values,
+      webPort: '55173',
+      endpoint: 'http://localhost:55001',
+      discoverStaleHours: '48',
+      careerOpsTimeoutSeconds: '300',
+      careerOpsDataPath: './candidate-data',
+    };
+    assert.equal(
+      (await post(app, '/api/setup/settings', next)).statusCode,
+      200,
+    );
+    const loaded = readConfig({}, root);
+    assert.equal(loaded.webPort, 55173);
+    assert.equal(loaded.apiPort, 55001);
+    assert.equal(loaded.discoverStaleHours, 48);
+    assert.equal(loaded.careerOpsTimeoutSeconds, 300);
+    assert.equal(loaded.careerOpsDataOverride, './candidate-data');
+    for (const invalid of [
+      { webPort: '55001' },
+      { discoverStaleHours: '0' },
+      { careerOpsTimeoutSeconds: '9' },
+      { careerOpsDataPath: 'https://remote.example' },
+    ])
+      assert.equal(
+        (await post(app, '/api/setup/settings', { ...next, ...invalid }))
+          .statusCode,
+        400,
+      );
+    writeFileSync(
+      config.localConfigPath,
+      JSON.stringify({
+        values: { easySeekPath: '../EasySeek' },
+        completedAt: null,
+      }),
+    );
+    assert.equal(readLocal(config.localConfigPath).values.webPort, undefined);
+    assert.equal(
+      readLocal(config.localConfigPath).values.careerOpsDataPath,
+      undefined,
+    );
+    assert.equal(
+      readConfig({ CAREER_OPS_DATA_DIR: './legacy-data' }, root)
+        .careerOpsDataOverride,
+      './legacy-data',
+    );
+    const state = (await app.inject('/api/setup/state')).json();
+    assert.equal(state.settingsFile, config.localConfigPath);
+    assert.ok(Array.isArray(state.legacy));
+  } finally {
+    await app.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});

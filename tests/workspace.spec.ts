@@ -132,29 +132,44 @@ test('Career Ops dashboard shows real run states, result links, pending tasks an
 test('Settings tests local integration health and narrow layouts keep content inside viewport', async ({
   page,
 }) => {
-  await page.route('**/api/workspace/integrations*', (route) => {
-    const refreshed =
-      new URL(route.request().url()).searchParams.get('refresh') === 'true';
+  let checked = false;
+  await page.route('**/api/setup/check', (route) => {
+    checked = true;
     return route.fulfill({
       json: {
         checkedAt: '2026-09-29T00:00:00Z',
-        database: { status: 'Connected', message: 'SQLite ready' },
+        database: { ready: true, message: 'SQLite ready', directory: './data' },
         easyseek: {
-          status: 'Not configured',
-          message: 'Browser status cannot be detected.',
-          endpoint: 'http://localhost:3001',
+          ready: true,
+          message: 'Repo found; browser authorization is external.',
         },
         alerts: {
-          status: refreshed ? 'Connected' : 'Unavailable',
-          message: refreshed ? 'Export ready' : 'Export missing',
+          ready: true,
+          message: 'Repo found',
+          config: 'Found',
+          latestRun: null,
+          exportAvailable: true,
+          workflowAvailable: true,
+        },
+        queue: { ready: true, message: 'Export ready' },
+        career: {
+          ready: false,
+          message: 'Configure CLI in Settings',
+          repoFound: true,
+          portability: true,
+          profile: true,
         },
       },
     });
   });
   await page.goto('/settings');
-  await expect(page.getByText('Export missing', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Test local connections' }).click();
-  await expect(page.getByText('Export ready', { exact: true })).toBeVisible();
+  await page
+    .getByRole('button', { name: 'Run health check', exact: true })
+    .click();
+  await expect(
+    page.getByText('Export ready', { exact: true }).first(),
+  ).toBeVisible();
+  expect(checked).toBe(true);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(

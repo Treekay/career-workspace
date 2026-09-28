@@ -24,12 +24,10 @@ test('navigation, API connection, setup, detail deep link, and missing page', as
     ).toBeVisible();
   }
   await expect(
-    page.getByRole('heading', { name: 'Sibling projects' }),
+    page.getByRole('heading', { name: 'Setup & local configuration' }),
   ).toBeVisible();
-  await expect(page.locator('.project')).toHaveCount(3);
-  await expect(
-    page.getByText('SQLite database', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByLabel('EasySeek repository path')).toBeVisible();
+  await expect(page.getByLabel('SQLite database path')).toBeVisible();
   await page.goto('/applications/example');
   await expect(
     page.getByRole('heading', { name: 'Application detail' }),
@@ -60,7 +58,7 @@ test('mobile layout keeps navigation and content within the viewport', async ({
     .getByRole('navigation')
     .getByRole('link', { name: 'Settings' })
     .click();
-  await expect(page.locator('.project')).toHaveCount(3);
+  await expect(page.getByLabel('EasySeek repository path')).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -73,12 +71,12 @@ test('API outage is visible and retry recovers', async ({ page }) => {
   await page.goto('/settings');
   await expect(page.getByText('API unavailable')).toBeVisible();
   await expect(page.getByRole('alert')).toContainText(
-    'Cannot reach the workspace API',
+    'Cannot load local settings',
   );
   await page.unroute('**/api/**');
   await page.getByRole('button', { name: 'Try again', exact: true }).click();
   await page.getByRole('button', { name: 'Retry', exact: true }).click();
-  await expect(page.locator('.project')).toHaveCount(3);
+  await expect(page.getByLabel('EasySeek repository path')).toBeVisible();
   await expect(page.getByText('API & database connected')).toBeVisible();
 });
 

@@ -1,10 +1,9 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { request, useResource } from './tracker/api';
+import { useResource } from './tracker/api';
 import { ErrorState } from './tracker/components';
 import { labels, dateTime } from './tracker/model';
 import type { ApplicationStage } from '../shared/tracker';
-import type { WorkspaceSummary, IntegrationHealth } from '../shared/workspace';
+import type { WorkspaceSummary } from '../shared/workspace';
 export function WorkflowSummary() {
   const summary = useResource<WorkspaceSummary>('/api/workspace/summary');
   return (
@@ -103,78 +102,5 @@ export function WorkflowSummary() {
         </div>
       )}
     </>
-  );
-}
-export function IntegrationStatus() {
-  const health = useResource<IntegrationHealth>('/api/workspace/integrations');
-  const [checking, setChecking] = useState(false);
-  return (
-    <section className="dashboard-panel">
-      <div className="panel-title">
-        <h2>Integration health</h2>
-        <button
-          disabled={checking}
-          onClick={async () => {
-            setChecking(true);
-            try {
-              health.replace(
-                await request<IntegrationHealth>(
-                  '/api/workspace/integrations?refresh=true',
-                ),
-              );
-            } catch {
-              health.reload();
-            } finally {
-              setChecking(false);
-            }
-          }}
-        >
-          {checking ? 'Checking connections…' : 'Test local connections'}
-        </button>
-      </div>
-      {health.error ? (
-        <ErrorState error={health.error} retry={health.reload} />
-      ) : !health.data ? (
-        <p role="status">Checking integrations…</p>
-      ) : (
-        <>
-          <div className="health-grid">
-            {(['database', 'easyseek', 'alerts'] as const).map((key) => (
-              <article key={key}>
-                <div className="panel-title">
-                  <h3>
-                    {
-                      {
-                        database: 'Local database',
-                        easyseek: 'EasySeek handoff',
-                        alerts: 'Job alerts',
-                      }[key]
-                    }
-                  </h3>
-                  <span
-                    className={
-                      'tag ' +
-                      (health.data![key].status === 'Connected'
-                        ? 'success'
-                        : 'warning')
-                    }
-                  >
-                    {health.data![key].status}
-                  </span>
-                </div>
-                <p>{health.data![key].message}</p>
-                {key === 'easyseek' && (
-                  <code>{health.data!.easyseek.endpoint}</code>
-                )}
-              </article>
-            ))}
-          </div>
-          <small>
-            Checked {dateTime(health.data.checkedAt)} · automatic checks cached
-            for 30 seconds
-          </small>
-        </>
-      )}
-    </section>
   );
 }

@@ -6,6 +6,8 @@ export interface SetupState {
   completedAt: string | null;
   restartRequired: boolean;
   overridden: string[];
+  settingsFile: string;
+  legacy: { key: string; variable: string; source: string }[];
   error: string | null;
 }
 export interface SetupCheck {

@@ -1933,6 +1933,8 @@ main > .dashboard-panel {
   color: white;
 }
 .setup-section {
+  min-width: 0;
+  overflow-wrap: anywhere;
   margin-bottom: 24px;
 }
 .setup-section label {
@@ -1980,4 +1982,12 @@ main > .dashboard-panel {
 .setup-save span {
   color: var(--muted);
   font-size: 12px;
+}
+
+.setup-section .panel-title {
+  flex-wrap: wrap;
+}
+details.dashboard-panel {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }

@@ -42,27 +42,16 @@ Discover reads the generated review queue through a read-only adapter; ingestion
 remains in job-alert-workflow. The explicit Setup Career Ops test runs its existing
 doctor, which may create missing onboarding templates without replacing user files.
 
-To customize paths or ports:
+Configure paths, ports and integration options in **Settings** or the **Setup Wizard**.
+Both use the same validated, Git-ignored `.workspace-local.json`; save and restart
+both servers. Routine manual `.env` configuration is deprecated. Existing `.env`
+values remain compatible fallbacks; saving captures the effective values in Settings.
+Explicit process overrides remain available for testing/recovery and are identified
+in the form. Relative paths resolve from this repository, except the optional Career
+Ops data root, which resolves from its repository.
 
-```powershell
-Copy-Item .env.example .env
-```
-
-Use Settings or the Setup Wizard to save paths and endpoint locally, then restart
-development. Explicit process environment variables override saved settings; saved
-settings override .env defaults. All relative paths resolve against this repository's root,
-including when the compiled server is launched from another working directory.
-Absolute paths are also supported. In .env, forward slashes work well on Windows.
-
-| Variable                | Default               |
-| ----------------------- | --------------------- |
-| API_PORT                | 3001                  |
-| WEB_PORT                | 5173                  |
-| DATABASE_PATH           | ./data/workspace.db   |
-| EASYSEEK_PATH           | ../EasySeek           |
-| JOB_ALERT_WORKFLOW_PATH | ../job-alert-workflow |
-| CAREER_OPS_PATH         | ../career-ops         |
-| DISCOVER_STALE_HOURS    | 36                    |
+See [Configuration audit](docs/CONFIGURATION.md) for every integrated configuration
+value, ownership, defaults, external authorization and first-use checklist.
 
 GET /api/setup reports configured/resolved project paths, directory availability,
 and the database path. Missing siblings do not prevent startup. This endpoint is
@@ -499,11 +488,8 @@ The route also checks the loopback client address and local Host header. CORS is
 not authentication; this remains a trusted, single-user local service.
 
 To allow EasySeek, copy its actual ID from the browser's extension management page
-and set an exact origin in `.env`, then restart:
-
-```dotenv
-IMPORT_EXTENSION_ORIGINS=chrome-extension://YOUR_ACTUAL_32_CHARACTER_EXTENSION_ID
-```
+and enter `chrome-extension://YOUR_ACTUAL_32_CHARACTER_EXTENSION_ID` in
+Settings → Allowed extension origins, save, then restart.
 
 The placeholder above must be replaced with the real ID (32 lowercase letters a-p).
 Multiple explicit origins can be comma-separated. Exact Firefox moz-extension UUID
@@ -537,15 +523,17 @@ other Career Ops implementation is copied here. V1 delegates exactly one mode:
 
 Keep the sibling at `../career-ops`, or edit its path in Settings and restart.
 Prepare the candidate files using that project's own PORTABILITY.md/doctor workflow.
-User data resolves from CAREER_OPS_ROOT, then CAREER_OPS_DATA_DIR, then the sibling's
-`.career-ops-data` marker, then the sibling root. The workspace reads these paths;
+Set **Career Ops data root** in Settings, or leave it blank to use the sibling's
+`.career-ops-data` marker, then its root. Explicit CAREER_OPS_ROOT / CAREER_OPS_DATA_DIR
+process overrides remain compatible and are identified in Settings. The workspace reads these paths;
 it never edits profiles or runs onboarding automatically.
 
 Install and sign in to the existing Codex CLI separately (`codex login`). Configure
-CAREER_OPS_CODEX_PATH as `codex` on PATH or the absolute native executable path.
+**Career Ops CLI executable** in Settings as `codex` for auto-detection or the
+absolute native executable path.
 Windows requires an .exe, not a PowerShell/cmd shim or a command string. The adapter
 uses shell-free argv and sends the job context through stdin, not command arguments.
-CAREER_OPS_TIMEOUT_SECONDS defaults to 600, with an allowed range of 10–1800.
+**Career Ops timeout (seconds)** defaults to 600, with an allowed range of 10–1800.
 
 Open Settings, then **Test connection** (or **Test Career Ops** for the doctor):
 
@@ -687,7 +675,7 @@ updates individual records after stage saves. Requests have bounded timeouts.
 EasySeek health describes endpoint configuration, **not proof that a browser
 extension is installed or currently connected**. Set the actual workspace API URL
 shown in Settings in EasySeek's optional Career Workspace settings. Configure exact
-extension origins via `IMPORT_EXTENSION_ORIGINS` as documented above.
+extension origins in Settings → Allowed extension origins.
 
 Discover does not expose “Run alerts now”: no safe execution interface is part of
 this adapter. Run the independent job-alert workflow, then use **Refresh export**.
@@ -744,7 +732,8 @@ workflow.` The sibling's README and daily skill own authentication, ingestion,
 
 The wizard and Settings share the same form and API. **Save configuration** writes
 `.workspace-local.json` atomically; this file is Git-ignored and contains only local
-paths, the HTTP localhost endpoint, explicit extension origins and setup state.
+paths, ports, the HTTP localhost endpoint, explicit extension origins, freshness and
+timeout limits, and setup state.
 No Gmail tokens, GitHub credentials, OpenAI keys or browser cookies are accepted.
 Each module keeps its own credential storage. Do not paste credentials into paths.
 

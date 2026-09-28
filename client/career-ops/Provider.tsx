@@ -54,16 +54,12 @@ export function CareerConnectionPanel() {
                   : 'Unavailable'}
         </span>
       </div>
-      <p>
-        Career Ops path: <code>{data?.configuredPath || '../career-ops'}</code>
-      </p>
-      <p>
-        Edit the Career Ops path in the local configuration form above, then
-        restart. Relative paths start at this workspace.
-      </p>
       {data && (
         <>
-          <p className="resolved">{data.path}</p>
+          <p className="resolved">Resolved data root: {data.dataPath}</p>
+          <p className="resolved">
+            Detected CLI: {data.cliPath || 'Not found'}
+          </p>
           <p role="status">{data.message}</p>
         </>
       )}
@@ -72,7 +68,7 @@ export function CareerConnectionPanel() {
           {error}
         </p>
       )}
-      <button disabled={busy} onClick={() => check(true)}>
+      <button type="button" disabled={busy} onClick={() => check(true)}>
         Test connection
       </button>
       <p className="empty-copy">

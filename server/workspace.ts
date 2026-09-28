@@ -96,7 +96,7 @@ export function registerWorkspaceRoutes(
           endpoint: `http://localhost:${config.apiPort}`,
           message: config.importExtensionOrigins.length
             ? 'Import endpoint ready for allowlisted extensions. Browser installation and online status cannot be detected.'
-            : 'Import endpoint ready. Add the extension origin to IMPORT_EXTENSION_ORIGINS and enable Career Workspace in EasySeek. Browser status cannot be detected.',
+            : 'Import endpoint ready. Add the extension origin in Settings and enable Career Workspace in EasySeek. Browser status cannot be detected.',
         },
         alerts: {
           status:

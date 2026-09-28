@@ -10,7 +10,8 @@
   documented interface.
 - The tracker stores only explicitly followed jobs, not the entire job market.
   Keep discovery/browser memory independent from durable application records.
-  The tracker UI, market import, and analytics remain outside the current phase.
+  Overview, application list, and detail UI use the local tracker API.
+  Market import and standalone analytics remain outside the current phase.
 - Route application writes through ApplicationService. Stage changes and their
   events must commit atomically; repeated current-stage requests are no-ops.
 - Preserve append-only events and restrictive foreign keys. DELETE archives;

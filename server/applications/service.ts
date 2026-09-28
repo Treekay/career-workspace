@@ -63,7 +63,7 @@ export class ApplicationService {
         event_at: now,
         note: null,
       });
-      return application;
+      return repository.get(application.id)!;
     });
   }
   get(id: string, query: unknown = {}) {
@@ -112,7 +112,7 @@ export class ApplicationService {
         event_at: now,
         note: data.note ?? null,
       });
-      return updated;
+      return repository.get(id)!;
     });
   }
   archive(id: string) {

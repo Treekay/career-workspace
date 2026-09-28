@@ -572,3 +572,23 @@ test('JD snapshot timestamps update, clear, and respect explicit unknown or hist
     sqlite.close();
   }
 });
+
+test('stage age follows transition events, never metadata updates or artifact creation', () => {
+  const { service, sqlite } = fixture();
+  try {
+    const saved = service.create(base);
+    assert.equal(service.get(saved.id).stage_entered_at, saved.created_at);
+    service.transition(saved.id, { stage: 'APPLIED' });
+    const entered = service.get(saved.id).stage_entered_at;
+    assert.notEqual(entered, saved.created_at);
+    service.update(saved.id, { notes: 'A later edit' });
+    service.addArtifact(saved.id, { type: 'CV', path: 'cv.pdf' });
+    assert.equal(service.get(saved.id).stage_entered_at, entered);
+    assert.equal(service.list()[0].stage_entered_at, entered);
+    assert.ok(service.get(saved.id).updated_at > entered);
+    service.transition(saved.id, { stage: 'INTERVIEW' });
+    assert.ok(service.get(saved.id).stage_entered_at > entered);
+  } finally {
+    sqlite.close();
+  }
+});

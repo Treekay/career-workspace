@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, getTableColumns, sql } from 'drizzle-orm';
 import type { openDatabase } from '../db/client.js';
 import {
   applications,
@@ -24,14 +24,20 @@ export class ApplicationRepository {
   }
   get(id: string) {
     return this.db
-      .select()
+      .select({
+        ...getTableColumns(applications),
+        stage_entered_at: sql<string>`coalesce((select event_at from application_events where application_id = applications.id and event_type in ('CREATED', 'STAGE_CHANGED') order by id desc limit 1), ${applications.created_at})`,
+      })
       .from(applications)
       .where(eq(applications.id, id))
       .get();
   }
   list(options: ListOptions) {
     return this.db
-      .select()
+      .select({
+        ...getTableColumns(applications),
+        stage_entered_at: sql<string>`coalesce((select event_at from application_events where application_id = applications.id and event_type in ('CREATED', 'STAGE_CHANGED') order by id desc limit 1), ${applications.created_at})`,
+      })
       .from(applications)
       .where(
         and(

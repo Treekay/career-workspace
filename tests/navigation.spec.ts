@@ -6,9 +6,7 @@ test('navigation, API connection, setup, detail deep link, and missing page', as
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
-  await expect(
-    page.getByRole('heading', { name: 'Your career, in one place.' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
   await expect(page.getByText('API & database connected')).toBeVisible();
   for (const title of [
     'Discover',
@@ -52,9 +50,7 @@ test('mobile layout keeps navigation and content within the viewport', async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await expect(
-    page.getByRole('heading', { name: 'Your career, in one place.' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

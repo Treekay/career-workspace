@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, Route, Routes, useParams } from 'react-router-dom';
+import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import { Overview } from './tracker/Overview';
+import { Applications } from './tracker/Applications';
+import { ApplicationDetail } from './tracker/Detail';
 import type { HealthResponse, SetupResponse } from '../shared/api';
 
 const navigation = [
@@ -90,75 +93,6 @@ function Placeholder({
     </>
   );
 }
-function Overview() {
-  return (
-    <>
-      <PageHeading
-        eyebrow="A little clarity. A new direction."
-        title="Your career, in one place."
-        description="A local home for your search. Bring your tools together and keep your next step in sight."
-      />
-      <section className="hero">
-        <div>
-          <span className="tag light">Workspace foundation</span>
-          <h2>
-            Make room for
-            <br />
-            your next opportunity.
-          </h2>
-          <p>
-            Your workspace is set up. Start by checking the paths to your
-            existing tools.
-          </p>
-          <Link className="button" to="/settings">
-            Review setup <span aria-hidden="true">↗</span>
-          </Link>
-        </div>
-        <div className="hero-art" aria-hidden="true">
-          <div />
-          <div />
-          <div />
-          <span>
-            ONE STEP
-            <br />
-            FORWARD.
-          </span>
-        </div>
-      </section>
-      <div className="section-title">
-        <h2>A place for every step</h2>
-        <span>Built around your workflow</span>
-      </div>
-      <div className="cards">
-        {[
-          [
-            '/discover',
-            'Discover',
-            'Find a clearer view of the opportunities ahead.',
-          ],
-          [
-            '/applications',
-            'Applications',
-            'A future home for your applications and next steps.',
-          ],
-          [
-            '/career-ops',
-            'Career Ops',
-            'Connect your existing toolkit on your terms.',
-          ],
-        ].map(([to, title, description]) => (
-          <Link className="card" to={to} key={to}>
-            <span className="tag">Planned</span>
-            <h3>
-              {title} <span aria-hidden="true">↗</span>
-            </h3>
-            <p>{description}</p>
-          </Link>
-        ))}
-      </div>
-    </>
-  );
-}
 function Settings() {
   const { data, error, retry } = useApi<SetupResponse>('/api/setup');
   return (
@@ -214,15 +148,6 @@ function Settings() {
         </>
       )}
     </>
-  );
-}
-function ApplicationDetail() {
-  const { id } = useParams();
-  return (
-    <Placeholder
-      title="Application detail"
-      description={`Details for application ${id} will be available when the tracker is implemented.`}
-    />
   );
 }
 export function App() {
@@ -283,15 +208,7 @@ export function App() {
                 />
               }
             />
-            <Route
-              path="/applications"
-              element={
-                <Placeholder
-                  title="Applications"
-                  description="Your application tracker will live here in a future phase."
-                />
-              }
-            />
+            <Route path="/applications" element={<Applications />} />
             <Route path="/applications/:id" element={<ApplicationDetail />} />
             <Route
               path="/analytics"

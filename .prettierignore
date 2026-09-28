@@ -1,0 +1,8 @@
+node_modules/
+dist/
+data/
+drizzle/
+test-results/
+playwright-report/
+package-lock.json
+.env

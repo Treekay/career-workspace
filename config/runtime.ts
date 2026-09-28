@@ -62,7 +62,20 @@ export function readConfig(
     throw new Error(
       'IMPORT_EXTENSION_ORIGINS must contain exact chrome-extension or moz-extension origins',
     );
+  const careerOpsTimeoutSeconds = Number(env.CAREER_OPS_TIMEOUT_SECONDS ?? 600);
+  if (
+    !Number.isInteger(careerOpsTimeoutSeconds) ||
+    careerOpsTimeoutSeconds < 10 ||
+    careerOpsTimeoutSeconds > 1800
+  )
+    throw new Error(
+      'CAREER_OPS_TIMEOUT_SECONDS must be an integer from 10 to 1800',
+    );
   return {
+    careerOpsTimeoutSeconds,
+    careerOpsCli: env.CAREER_OPS_CODEX_PATH?.trim() || 'codex',
+    careerOpsDataOverride:
+      env.CAREER_OPS_ROOT || env.CAREER_OPS_DATA_DIR || null,
     importExtensionOrigins,
     discoverStaleHours,
     root,

@@ -1,3 +1,4 @@
+import { CareerConnectionPanel, CareerOpsPage } from './career-ops/Provider';
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
 import { Discover } from './discover/Discover';
@@ -67,34 +68,6 @@ function PageHeading({
     </header>
   );
 }
-function Placeholder({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <>
-      <PageHeading
-        eyebrow="Your next chapter"
-        title={title}
-        description={description}
-      />
-      <section className="empty-state">
-        <span className="tag">Planned</span>
-        <h2>A space for what comes next.</h2>
-        <p>
-          This page is ready for a future phase. No job or application data is
-          connected yet.
-        </p>
-        <Link to="/settings">
-          Review workspace setup <span aria-hidden="true">→</span>
-        </Link>
-      </section>
-    </>
-  );
-}
 function Settings() {
   const { data, error, retry } = useApi<SetupResponse>('/api/setup');
   return (
@@ -137,6 +110,7 @@ function Settings() {
               ))}
             </div>
           </section>
+          <CareerConnectionPanel />
           <section className="panel">
             <h2>Local storage</h2>
             <p>SQLite database</p>
@@ -205,15 +179,7 @@ export function App() {
             <Route path="/applications" element={<Applications />} />
             <Route path="/applications/:id" element={<ApplicationDetail />} />
             <Route path="/analytics" element={<Analytics />} />
-            <Route
-              path="/career-ops"
-              element={
-                <Placeholder
-                  title="Career Ops"
-                  description="A future connection to your independent Career Ops project."
-                />
-              }
-            />
+            <Route path="/career-ops" element={<CareerOpsPage />} />
             <Route path="/settings" element={<Settings />} />
             <Route
               path="*"

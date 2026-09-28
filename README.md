@@ -36,8 +36,9 @@ F:/code/
 ```
 
 The other projects retain their own code, dependencies, Git repositories, and data.
-This repository does not import their modules, copy their code, execute commands
-inside them, or modify their files. Settings only checks whether configured
+This repository does not import sibling modules or copy their code. Discover reads
+its export, and Career Ops runs its existing workflows through a read-only CLI adapter.
+The workspace does not modify sibling files. Settings only checks whether configured
 directories exist. Discover reads the generated review queue through a read-only
 adapter; ingestion remains in job-alert-workflow.
 
@@ -74,7 +75,7 @@ writer in this phase. Keep this unauthenticated development workspace on loopbac
 - Analytics: recorded-path Sankey, conversion rates, stage age, fit ranking,
   progression scatter, and weekly/monthly application volume.
 - Discover: read-only review queue with scope, fit, source, search, and sorting.
-- Career Ops: clearly marked future placeholder.
+- Career Ops: optional workflow provider status and connection test; draft actions live on application detail.
 - Application detail: /applications/:id with JD snapshot, analysis, artifacts, timeline,
   quick stage changes, and editable notes/next action.
 - Settings / Setup: live API diagnostics for local paths and storage.
@@ -515,3 +516,119 @@ applies it automatically, or run `npm run db:migrate`; `npm run db:inspect` veri
 the schema. Back up your database before applying schema changes. Tests cover
 populated upgrades, repeat/concurrent imports, rollback, ambiguous identities,
 manual-data preservation, late handoffs, and allowed/denied browser origins.
+
+## Optional Career Ops analysis provider
+
+The integration was based on the sibling's PORTABILITY.md, AGENTS.md, skill router,
+and its documented headless `codex exec` workflow. No scoring, CV-generation, or
+other Career Ops implementation is copied here. V1 delegates exactly one mode:
+
+| Detail action      | Existing Career Ops mode | Stored artifact type |
+| ------------------ | ------------------------ | -------------------- |
+| Analyze Fit        | oferta                   | ANALYSIS             |
+| Tailor CV          | text                     | CV (Markdown)        |
+| Draft Cover Letter | cover                    | COVER_LETTER         |
+| Networking Plan    | contacto                 | ANALYSIS             |
+| Interview Prep     | interview-prep           | INTERVIEW_NOTES      |
+
+### Setup and connection
+
+Keep the sibling at `../career-ops`, or set CAREER_OPS_PATH in `.env` and restart.
+Prepare the candidate files using that project's own PORTABILITY.md/doctor workflow.
+User data resolves from CAREER_OPS_ROOT, then CAREER_OPS_DATA_DIR, then the sibling's
+`.career-ops-data` marker, then the sibling root. The workspace reads these paths;
+it never edits profiles or runs onboarding automatically.
+
+Install and sign in to the existing Codex CLI separately (`codex login`). Configure
+CAREER_OPS_CODEX_PATH as `codex` on PATH or the absolute native executable path.
+Windows requires an .exe, not a PowerShell/cmd shim or a command string. The adapter
+uses shell-free argv and sends the job context through stdin, not command arguments.
+CAREER_OPS_TIMEOUT_SECONDS defaults to 600, with an allowed range of 10–1800.
+
+Open Settings / Setup or Career Ops, then **Test connection**:
+
+- **Missing:** sibling directory is absent.
+- **Invalid:** required workflow/profile files, executable, CLI flags, or CLI login
+  are unavailable. The message identifies the local setup step.
+- **Connected:** files, required CLI capabilities, and CLI login checks succeeded.
+  This does not prove model quota/access or verify candidate facts. No model call
+  is made by a connection test.
+
+The workspace remains usable without this provider. Actions return a clear local
+configuration error while unavailable. No new application authentication, API-key
+store, cloud database, or service deployment is introduced. The locally executed
+CLI still uses its model service and may use native web search for public research;
+this is not a guarantee of offline inference. V1 ignores custom Codex user config
+for predictable isolation and uses its existing login. Custom model/provider
+profiles are outside this adapter's V1 scope.
+
+### Execution and results
+
+Save a full JD snapshot, open application detail, then select an action. Requests
+contain application metadata, the full stored JD, current stage, and previous
+analysis. Candidate facts come only from the career-ops permitted sources. The
+prompt references the actual router/mode files and preserves source-of-truth,
+provenance, and internal/external language rules. Job content is untrusted data.
+
+The adapter uses `codex --ask-for-approval never --search exec --sandbox read-only`
+with `--ignore-user-config`, `--ephemeral`, `--output-schema`, and
+`--output-last-message`. These are the installed CLI's supported flags; see
+[Codex non-interactive mode](https://developers.openai.com/codex/noninteractive).
+It runs from a unique workspace-owned directory and asks the existing mode to
+return its draft instead of writing its usual sibling output/tracker paths.
+No auto-pipeline, sibling tracker update, profile update, message sending, job
+submission, or ingestion is authorized. CV output is Markdown in V1, not PDF.
+
+One run executes at a time per workspace server. The API immediately returns a run
+record, and the UI polls for completion. Timeouts, malformed/oversized output,
+nonzero CLI exit, and requests for missing information are explicit states. There
+are no automatic retries. A server restart shows unfinished runs as Interrupted;
+retry explicitly. Normal shutdown cancels the active process tree before closing
+SQLite. Stdout/stderr are bounded and raw CLI diagnostics are not exposed in the UI.
+
+Each run is preserved under:
+
+```text
+data/applications/<application-id>/career-ops/<run-uuid>/
+  request.json    application/JD snapshot and prior analysis
+  schema.json     expected response envelope
+  response.json   original provider response (when available)
+  result.md       completed draft
+  run.json        action, timestamps, state, message, artifact reference
+```
+
+Directories are generated from UUIDs, with containment checks. Documents are saved
+with exclusive creation; retries create new directories. Provider-returned file
+paths are never trusted or followed. These local/private files are Git-ignored.
+Back them up together with SQLite; transferring the Git repository alone does not
+transfer applications or artifacts. A failed DB import may leave its draft files
+for inspection, but it never partially updates application metadata/history.
+
+Successful runs register an artifact and ARTIFACT_ADDED event atomically and update
+updated_at. Analyze Fit also stores the summary and any returned fit level/score.
+The provider must supply a numeric score's native maximum (5 or 100); it is normalized
+to the tracker's 0–100 scale, with the original preserved in response.json. Null
+scores/levels do not invent values or erase existing fields. Other actions retain
+their result in the new artifact rather than replace the fit summary. If the JD,
+stage, or prior analysis changed during execution, the artifact is retained and
+newer application analysis is preserved, with a visible message. Notes, next actions,
+stage history, and prior artifacts are never overwritten by these actions.
+
+### Local API and verification
+
+- GET /api/career-ops/connection and POST /api/career-ops/test report connection state.
+- GET /api/applications/:id/career-ops/runs lists persisted run records.
+- POST /api/applications/:id/career-ops/runs accepts `{ "action": "analyze-fit" }`
+  (or the other action keys from the shared contract) and returns 202.
+- GET /api/applications/:id/career-ops/runs/:runId/document downloads the fixed
+  result Markdown as an attachment. It does not serve arbitrary file paths.
+
+Provider endpoints require loopback clients and local workspace origins. POSTs are
+JSON-only; arbitrary commands, paths, and unknown action fields are rejected.
+No database migration is needed: runs use local manifests and results use the
+existing applications/artifacts/events model. `npm run check` and
+`npm run test:browser` cover isolated provider responses, all five modes, input
+snapshots, explicit scoring, versioning, concurrency, manual-edit protection,
+rollback, process limits, setup errors, and UI polling. Automated tests never invoke
+model generation against real candidate data. A live model run additionally needs
+a signed-in CLI with model access.

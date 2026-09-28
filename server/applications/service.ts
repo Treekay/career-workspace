@@ -275,6 +275,68 @@ export class ApplicationService {
     this.require(this.repository, id, true);
     return this.repository.artifacts(id);
   }
+  saveCareerOpsResult(
+    id: string,
+    input: {
+      type: 'ANALYSIS' | 'CV' | 'COVER_LETTER' | 'INTERVIEW_NOTES';
+      path: string;
+      analysis?: {
+        summary: string;
+        level: string | null;
+        score: number | null;
+      };
+      expected: {
+        jd_markdown: string | null;
+        stage: string;
+        analysis_summary: string | null;
+        fit_level: string | null;
+        fit_score: number | null;
+      };
+    },
+  ) {
+    applicationId.parse(id);
+    const artifactData = artifactInput.parse({
+      type: input.type,
+      path: input.path,
+    });
+    return this.repository.transaction((repository) => {
+      const current = this.require(repository, id);
+      const now = this.now();
+      const artifact = repository.addArtifact({
+        ...artifactData,
+        id: randomUUID(),
+        application_id: id,
+        created_at: now,
+      });
+      const unchanged = Object.entries(input.expected).every(
+        ([key, value]) => current[key as keyof typeof input.expected] === value,
+      );
+      const update =
+        input.analysis && unchanged
+          ? updateApplicationInput.parse({
+              analysis_summary: input.analysis.summary,
+              ...(input.analysis.level !== null
+                ? { fit_level: input.analysis.level }
+                : {}),
+              ...(input.analysis.score !== null
+                ? { fit_score: input.analysis.score }
+                : {}),
+            })
+          : {};
+      repository.update(id, { ...update, updated_at: now });
+      repository.appendEvent({
+        application_id: id,
+        event_type: 'ARTIFACT_ADDED',
+        stage: current.stage,
+        event_at: now,
+        note: 'Career Ops: ' + input.type,
+      });
+      return {
+        artifact,
+        analysisUpdated: Boolean(input.analysis && unchanged),
+      };
+    });
+  }
   addArtifact(id: string, input: unknown) {
     applicationId.parse(id);
     const data = artifactInput.parse(input);

@@ -1,3 +1,8 @@
+import { CareerOpsService } from './career-ops/service.js';
+import { registerCareerOpsRoutes } from './career-ops/routes.js';
+import type { Runner } from './career-ops/process.js';
+import { ApplicationService } from './applications/service.js';
+import { ApplicationRepository } from './applications/repository.js';
 import Fastify from 'fastify';
 import { registerDiscoverRoutes } from './discover/routes.js';
 import { registerAnalyticsRoutes } from './analytics/routes.js';
@@ -11,10 +16,18 @@ import type { HealthResponse, SetupResponse } from '../shared/api.js';
 export function buildApp(
   config: WorkspaceConfig = readConfig(),
   logger = false,
+  dependencies: { careerOpsRunner?: Runner } = {},
 ) {
   const app = Fastify({ logger });
   const { db, sqlite } = openDatabase(config.databasePath);
+  const careerOps = new CareerOpsService(
+    config,
+    new ApplicationService(new ApplicationRepository(db)),
+    dependencies.careerOpsRunner,
+  );
+  registerCareerOpsRoutes(app, careerOps, config);
   app.addHook('onClose', async () => {
+    await careerOps.close();
     sqlite.close();
   });
   app.get<{ Reply: HealthResponse }>('/api/health', async (_request, reply) => {

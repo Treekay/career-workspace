@@ -1,3 +1,4 @@
+import { CareerActions } from '../career-ops/Provider';
 import { useState, type FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useResource, request } from './api';
@@ -186,13 +187,20 @@ export function ApplicationDetail() {
           </section>
           <section className="dashboard-panel">
             <h2>Career Ops analysis</h2>
+            <CareerActions
+              key={a.id}
+              applicationId={a.id}
+              hasJd={Boolean(a.jd_markdown?.trim())}
+              onComplete={() => {
+                application.reload();
+                artifacts.reload();
+                events.reload();
+              }}
+            />
             {a.analysis_summary ? (
               <p className="document-text">{a.analysis_summary}</p>
             ) : (
-              <p className="empty-copy">
-                No analysis recorded. Career Ops integration is not connected
-                yet.
-              </p>
+              <p className="empty-copy">No analysis recorded.</p>
             )}
           </section>
           <section className="dashboard-panel">

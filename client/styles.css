@@ -1717,3 +1717,16 @@ textarea {
     padding: 16px;
   }
 }
+
+.career-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+.career-actions {
+  margin-bottom: 24px;
+}
+.career-actions code {
+  overflow-wrap: anywhere;
+}

@@ -387,6 +387,8 @@ code.resolved {
   border-radius: 8px;
 }
 .skip-link {
+  opacity: 0;
+  pointer-events: none;
   position: fixed;
   top: 8px;
   left: 8px;
@@ -396,6 +398,8 @@ code.resolved {
   z-index: 3;
 }
 .skip-link:focus {
+  opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
 }
 @media (min-width: 1500px) {
@@ -1512,4 +1516,204 @@ textarea {
 .sankey .sankey-step {
   fill: #899389;
   font-size: 10px;
+}
+
+.discover-kpis {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 16px;
+  margin: 24px 0 12px;
+}
+.kpi .run-date {
+  font-size: 25px;
+}
+.discover-meta {
+  font-size: 10px;
+  color: #7c887d;
+  line-height: 1.8;
+  margin-bottom: 26px;
+}
+.discover-warning p {
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+.discover-controls {
+  background: #fff;
+  border: 1px solid #dfe6db;
+  border-radius: 10px;
+  padding: 20px;
+}
+.discover-controls > .filter-tabs {
+  width: fit-content;
+}
+.discover-filter-row {
+  display: grid;
+  grid-template-columns: 120px 140px 160px minmax(180px, 1fr);
+  gap: 14px;
+  margin-top: 18px;
+}
+.discover-filter-row label {
+  font-size: 11px;
+}
+.discover-filter-row select,
+.discover-filter-row input {
+  font-size: 12px;
+  height: 39px;
+}
+.discover-results-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin: 24px 0 16px;
+}
+.discover-results-heading p {
+  font-size: 12px;
+  margin: 0;
+}
+.discover-results-heading > span {
+  font-size: 10px;
+  color: #819080;
+}
+.discover-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.discover-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 25px;
+  border: 1px solid #dfe5da;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px #233c3503;
+}
+.discover-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.fit-badge {
+  padding: 6px 9px;
+  background: #f0f2ed;
+  color: #65765c;
+  font-size: 10px;
+  font-weight: 650;
+  border-radius: 5px;
+}
+.fit-badge > span {
+  font-weight: 400;
+  margin-left: 4px;
+}
+.fit-HIGH {
+  background: #e4f0df;
+  color: #35623d;
+}
+.fit-MEDIUM {
+  background: #edf3e7;
+  color: #627541;
+}
+.fit-LOW {
+  background: #eef0f2;
+  color: #6c7380;
+}
+.fit-SKIP {
+  background: #f8eeee;
+  color: #a66468;
+}
+.discover-source {
+  font-size: 10px;
+  color: #7d887e;
+}
+.discover-card h2 {
+  font-size: 17px;
+  line-height: 1.45;
+  font-weight: 600;
+  margin: 0 0 10px;
+  overflow-wrap: anywhere;
+}
+.discover-company {
+  font-size: 13px;
+  color: #4e6656;
+  margin-bottom: 3px;
+  overflow-wrap: anywhere;
+}
+.discover-location {
+  font-size: 11px;
+  color: #829080;
+  margin-bottom: 17px;
+}
+.discover-reason {
+  font-size: 12px;
+  line-height: 1.75;
+  border-top: 1px solid #eef1e9;
+  padding-top: 15px;
+  margin: 0 0 24px;
+  overflow-wrap: anywhere;
+}
+.discover-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-top: auto;
+}
+.discover-card-footer time {
+  font-size: 10px;
+  color: #7f8b80;
+}
+.discover-card-footer .primary-button {
+  padding: 9px 12px;
+  font-size: 11px;
+}
+.source-url {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  font-size: 10px;
+  color: #7b8f80;
+  margin-top: 13px;
+}
+.disabled-link {
+  font-size: 11px;
+  color: #8b8f8a;
+}
+@media (max-width: 1100px) {
+  .discover-filter-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .discover-card-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+@media (max-width: 700px) {
+  .discover-grid,
+  .discover-kpis {
+    grid-template-columns: 1fr;
+  }
+  .discover-results-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .discover-card {
+    padding: 20px;
+  }
+  .discover-search {
+    grid-column: 1/-1;
+  }
+  .discover-card-footer {
+    flex-direction: row;
+    align-items: center;
+  }
+  .discover-controls {
+    padding: 16px;
+  }
 }

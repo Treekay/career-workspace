@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import { Discover } from './discover/Discover';
 import { Analytics } from './tracker/Analytics';
 import { Overview } from './tracker/Overview';
 import { Applications } from './tracker/Applications';
@@ -200,15 +201,7 @@ export function App() {
         <main id="main" tabIndex={-1}>
           <Routes>
             <Route path="/" element={<Overview />} />
-            <Route
-              path="/discover"
-              element={
-                <Placeholder
-                  title="Discover"
-                  description="Explore opportunities from your independent discovery tools."
-                />
-              }
-            />
+            <Route path="/discover" element={<Discover />} />
             <Route path="/applications" element={<Applications />} />
             <Route path="/applications/:id" element={<ApplicationDetail />} />
             <Route path="/analytics" element={<Analytics />} />

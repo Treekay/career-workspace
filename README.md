@@ -38,7 +38,8 @@ F:/code/
 The other projects retain their own code, dependencies, Git repositories, and data.
 This repository does not import their modules, copy their code, execute commands
 inside them, or modify their files. Settings only checks whether configured
-directories exist; integrations and data adapters are future work.
+directories exist. Discover reads the generated review queue through a read-only
+adapter; ingestion remains in job-alert-workflow.
 
 To customize paths or ports:
 
@@ -59,6 +60,7 @@ Absolute paths are also supported. In .env, forward slashes work well on Windows
 | EASYSEEK_PATH           | ../EasySeek           |
 | JOB_ALERT_WORKFLOW_PATH | ../job-alert-workflow |
 | CAREER_OPS_PATH         | ../career-ops         |
+| DISCOVER_STALE_HOURS    | 36                    |
 
 GET /api/setup reports configured/resolved project paths, directory availability,
 and the database path. Missing siblings do not prevent startup. This endpoint is
@@ -71,7 +73,8 @@ writer in this phase. Keep this unauthenticated development workspace on loopbac
 - Applications: compact cards with filters, search, stage selectors, and an add form.
 - Analytics: recorded-path Sankey, conversion rates, stage age, fit ranking,
   progression scatter, and weekly/monthly application volume.
-- Discover and Career Ops: clearly marked future placeholders.
+- Discover: read-only review queue with scope, fit, source, search, and sorting.
+- Career Ops: clearly marked future placeholder.
 - Application detail: /applications/:id with JD snapshot, analysis, artifacts, timeline,
   quick stage changes, and editable notes/next action.
 - Settings / Setup: live API diagnostics for local paths and storage.
@@ -376,3 +379,44 @@ Charts use local CSS/SVG/meter elements. No chart service or cloud dependency is
 introduced. Tests cover the four requested paths, repeat cycles, event ordering,
 archival, missing dates, zero/missing scores, scatter eligibility, UTC date
 boundaries, empty periods, read-only behavior, and datasets above 200 records.
+
+## Discover
+
+Open /discover after starting `npm run dev`. GET /api/discover reads only
+`job-ops/exports/review-queue.json` below JOB_ALERT_WORKFLOW_PATH (default
+`../job-alert-workflow`). Generate this export using the sibling project's own
+workflow. Refresh reloads the file; the workspace never runs ingestion, writes
+back, or copies discovery jobs into SQLite/application history. EasySeek handles
+browsing and marking; source links open in a new tab.
+
+- Today means first seen on the current calendar date in the export's timezone.
+- Last 30 Days includes jobs last seen today or in the preceding 29 calendar days.
+- Counts reflect valid jobs in that window, not an earlier run's summary totals.
+- Recommended preserves the producer's exported order. Fit sorts categorical
+  HIGH, MEDIUM, LOW, SKIP, then UNASSESSED; no scores are calculated here.
+- Search matches title, company, location, and reason. Filters combine with source
+  and fit. Missing values stay visibly unknown.
+
+The generated format supplies a last run **date**, not an exact run timestamp.
+The page explicitly says this and separately displays the export file's modified
+time and `generated_at` data watermark. The watermark can remain unchanged after
+a successful run with no changed data; it is not presented as run completion time.
+
+DISCOVER_STALE_HOURS is a positive number (default 36). A snapshot is stale when
+its file modification time exceeds that age, or its run date precedes the cutoff
+calendar date in the export timezone. Stale data remains visible with a warning.
+Missing, unreadable, malformed, or unsupported exports show a retryable error.
+The endpoint returns 200 with `status: ready | stale`, or 503 with
+`status: missing | invalid | unavailable`, an error, and a recovery hint.
+Responses are not cached.
+
+The adapter validates the envelope, timezone, dates, and rows. Invalid/duplicate
+rows are omitted with a visible warning. Reads are bounded to 10 MiB and a fixed
+path; redirected paths outside the configured sibling are rejected. Source links
+must be HTTP(S) URLs on the matching SEEK/LinkedIn domains; unsafe links are
+unavailable. Export text is rendered as text, never HTML. No migrations are needed.
+
+Tests use temporary export fixtures and isolated databases. Coverage includes
+retention/timezone boundaries, stale/missing/invalid exports, read-only behavior,
+file limits, redirected paths, unsafe URLs, all controls, new-tab isolation,
+error recovery, and desktop/mobile layouts. No fixture jobs are seeded locally.

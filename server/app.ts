@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { registerDiscoverRoutes } from './discover/routes.js';
 import { registerAnalyticsRoutes } from './analytics/routes.js';
 import { registerApplicationRoutes } from './applications/routes.js';
 import { statSync } from 'node:fs';
@@ -43,5 +44,6 @@ export function buildApp(
   }));
   registerApplicationRoutes(app, db);
   registerAnalyticsRoutes(app, db);
+  registerDiscoverRoutes(app, config);
   return app;
 }

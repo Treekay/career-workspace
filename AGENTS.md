@@ -14,6 +14,10 @@
   Analytics is descriptive and read-only: use persisted application/event data.
   Never infer skipped stages, fabricate observations, or add predictions.
   Preserve archived records in historical cohorts. Market import stays separate.
+- Discover reads only the configured job-alert-workflow generated review-queue JSON.
+  Keep the adapter read-only: no ingestion imports, execution, sibling writes, or
+  automatic tracker creation. Preserve producer ranking and display unknown data
+  honestly; generated_at is a data watermark, not the last run completion time.
 - Route application writes through ApplicationService. Stage changes and their
   events must commit atomically; repeated current-stage requests are no-ops.
 - Preserve append-only events and restrictive foreign keys. DELETE archives;

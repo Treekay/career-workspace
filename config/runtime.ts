@@ -43,7 +43,11 @@ export function readConfig(
       throw new Error('Configured paths cannot be empty');
     return resolve(root, value ?? fallback);
   };
+  const discoverStaleHours = Number(env.DISCOVER_STALE_HOURS ?? 36);
+  if (!Number.isFinite(discoverStaleHours) || discoverStaleHours <= 0)
+    throw new Error('DISCOVER_STALE_HOURS must be a positive number');
   return {
+    discoverStaleHours,
     root,
     host: '127.0.0.1' as const,
     apiPort,

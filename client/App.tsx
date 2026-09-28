@@ -1,3 +1,4 @@
+import { SetupWizard, SetupConfiguration, SetupPrompt } from './Setup';
 import { IntegrationStatus } from './Workspace';
 import { CareerConnectionPanel, CareerOpsPage } from './career-ops/Provider';
 import { useEffect, useState } from 'react';
@@ -86,11 +87,12 @@ function Settings() {
         <p role="status">Checking local paths…</p>
       ) : (
         <>
+          <SetupConfiguration />
           <section className="panel">
             <h2>Sibling projects</h2>
             <p>
-              Configure these paths in the workspace’s .env file, then restart
-              development. Relative paths start at the workspace root.
+              Edit paths in the configuration form above. Environment overrides
+              remain available. Relative paths start at the workspace root.
             </p>
             <div className="project-list">
               {data.projects.map((project) => (
@@ -175,7 +177,9 @@ export function App() {
           </div>
         </div>
         <main id="main" tabIndex={-1}>
+          <SetupPrompt />
           <Routes>
+            <Route path="/setup" element={<SetupWizard />} />
             <Route path="/" element={<Overview />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/applications" element={<Applications />} />

@@ -31,7 +31,7 @@ export async function connection(
       ...info,
       status: 'Missing',
       message:
-        'Career Ops directory is missing. Set CAREER_OPS_PATH in .env and restart.',
+        'Career Ops directory is missing. Correct its path in Settings and restart.',
     };
   try {
     const marker = join(project.path, '.career-ops-data');
@@ -67,7 +67,7 @@ export async function connection(
       return {
         ...info,
         message:
-          'Codex executable is missing. Set CAREER_OPS_CODEX_PATH to a native executable (not a shell command).',
+          'Codex executable is missing. Choose a native executable in Settings, or use a CAREER_OPS_CODEX_PATH process override (not a shell command).',
       };
     const help = await runner({
       bin: info.cliPath,

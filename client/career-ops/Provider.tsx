@@ -58,8 +58,8 @@ export function CareerConnectionPanel() {
         Career Ops path: <code>{data?.configuredPath || '../career-ops'}</code>
       </p>
       <p>
-        Set CAREER_OPS_PATH in .env to change the path, then restart. Relative
-        paths start at this workspace.
+        Edit the Career Ops path in the local configuration form above, then
+        restart. Relative paths start at this workspace.
       </p>
       {data && (
         <>

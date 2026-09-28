@@ -18,6 +18,7 @@ export default defineConfig({
     timeout: 60000,
     env: {
       API_PORT: '43001',
+      WORKSPACE_CONFIG_PATH: './data/browser-setup-' + randomUUID() + '.json',
       WEB_PORT: '45173',
       DATABASE_PATH: './data/browser-test-' + randomUUID() + '.db',
     },

@@ -1900,3 +1900,84 @@ textarea:focus-visible {
 main > .dashboard-panel {
   margin-bottom: 24px;
 }
+
+.setup-prompt,
+.setup-save,
+.wizard-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.setup-prompt {
+  border: 1px solid #c6ded9;
+  background: #edf6f3;
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 13px;
+  justify-content: space-between;
+}
+.setup-prompt a {
+  color: var(--accent);
+  font-weight: 600;
+}
+.setup-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 24px;
+}
+.setup-steps button[aria-current='step'] {
+  background: var(--accent);
+  color: white;
+}
+.setup-section {
+  margin-bottom: 24px;
+}
+.setup-section label {
+  display: block;
+  margin: 20px 0;
+}
+.setup-section input {
+  width: 100%;
+  display: block;
+  margin-top: 8px;
+}
+.setup-section small {
+  display: block;
+  margin-top: 8px;
+}
+.setup-section code {
+  overflow-wrap: anywhere;
+}
+.setup-section li {
+  margin: 10px 0;
+  line-height: 1.6;
+}
+.readiness-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 0;
+}
+.readiness-row p {
+  flex-basis: 100%;
+  margin: 0;
+}
+.setup-facts {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+  font-size: 13px;
+}
+.setup-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.setup-save span {
+  color: var(--muted);
+  font-size: 12px;
+}

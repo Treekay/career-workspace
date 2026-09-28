@@ -1,3 +1,4 @@
+import { readLocal, type LocalSettings } from './local.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +20,9 @@ function findRoot(start: string): string {
   }
 }
 export const projectRoot = findRoot(dirname(fileURLToPath(import.meta.url)));
-loadEnv({ path: join(projectRoot, '.env'), quiet: true });
+const initialEnvironmentKeys = new Set(Object.keys(process.env));
+const envFileValues =
+  loadEnv({ path: join(projectRoot, '.env'), quiet: true }).parsed || {};
 
 function port(
   value: string | undefined,
@@ -35,6 +38,43 @@ export function readConfig(
   env: NodeJS.ProcessEnv = process.env,
   root = projectRoot,
 ) {
+  const localConfigPath = resolve(
+    root,
+    env.WORKSPACE_CONFIG_PATH || '.workspace-local.json',
+  );
+  let local: Partial<LocalSettings> = {};
+  let localConfigError: string | null = null;
+  try {
+    local = readLocal(localConfigPath).values;
+  } catch {
+    localConfigError =
+      'Local settings could not be read. Repair the configuration file before saving setup.';
+  }
+  const originalEnv = env;
+  const mapping = {
+    databasePath: 'DATABASE_PATH',
+    easySeekPath: 'EASYSEEK_PATH',
+    jobAlertsPath: 'JOB_ALERT_WORKFLOW_PATH',
+    careerOpsPath: 'CAREER_OPS_PATH',
+    careerOpsCli: 'CAREER_OPS_CODEX_PATH',
+    extensionOrigins: 'IMPORT_EXTENSION_ORIGINS',
+    endpoint: 'API_PORT',
+  } as const;
+  const overriddenSettings = Object.entries(mapping)
+    .filter(
+      ([, key]) =>
+        originalEnv[key] !== undefined &&
+        (originalEnv !== process.env ||
+          initialEnvironmentKeys.has(key) ||
+          envFileValues[key] !== originalEnv[key]),
+    )
+    .map(([key]) => key);
+  env = { ...env };
+  for (const [key, variable] of Object.entries(mapping)) {
+    const value = local[key as keyof LocalSettings];
+    if (!overriddenSettings.includes(key) && value !== undefined)
+      env[variable] = key === 'endpoint' ? new URL(value).port || '80' : value;
+  }
   const apiPort = port(env.API_PORT, 3001, 'API_PORT');
   const webPort = port(env.WEB_PORT, 5173, 'WEB_PORT');
   if (apiPort === webPort) throw new Error('API_PORT and WEB_PORT must differ');
@@ -72,6 +112,20 @@ export function readConfig(
       'CAREER_OPS_TIMEOUT_SECONDS must be an integer from 10 to 1800',
     );
   return {
+    localConfigPath,
+    localConfigError,
+    overriddenSettings,
+    settingsValues: {
+      databasePath: env.DATABASE_PATH ?? './data/workspace.db',
+      easySeekPath: env.EASYSEEK_PATH ?? '../EasySeek',
+      jobAlertsPath: env.JOB_ALERT_WORKFLOW_PATH ?? '../job-alert-workflow',
+      careerOpsPath: env.CAREER_OPS_PATH ?? '../career-ops',
+      careerOpsCli: env.CAREER_OPS_CODEX_PATH?.trim() || 'codex',
+      endpoint: overriddenSettings.includes('endpoint')
+        ? `http://localhost:${apiPort}`
+        : local.endpoint || `http://localhost:${apiPort}`,
+      extensionOrigins: env.IMPORT_EXTENSION_ORIGINS ?? '',
+    } satisfies LocalSettings,
     careerOpsTimeoutSeconds,
     careerOpsCli: env.CAREER_OPS_CODEX_PATH?.trim() || 'codex',
     careerOpsDataOverride:

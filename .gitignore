@@ -11,3 +11,6 @@ data/
 
 test-results/
 playwright-report/
+
+.workspace-local.json
+.workspace-local.json.*.tmp

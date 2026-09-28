@@ -1,3 +1,4 @@
+import { registerSetupRoutes } from './setup.js';
 import { registerWorkspaceRoutes } from './workspace.js';
 import { CareerOpsService } from './career-ops/service.js';
 import { registerCareerOpsRoutes } from './career-ops/routes.js';
@@ -17,14 +18,58 @@ import type { HealthResponse, SetupResponse } from '../shared/api.js';
 export function buildApp(
   config: WorkspaceConfig = readConfig(),
   logger = false,
-  dependencies: { careerOpsRunner?: Runner } = {},
+  dependencies: { careerOpsRunner?: Runner; setupRunner?: Runner } = {},
 ) {
   const app = Fastify({ logger });
-  const { db, sqlite } = openDatabase(config.databasePath);
+  let storage: ReturnType<typeof openDatabase> | null = null;
+  try {
+    if (!config.localConfigError) storage = openDatabase(config.databasePath);
+  } catch {
+    app.log.error(
+      'Workspace storage unavailable; setup recovery remains available.',
+    );
+  }
+  if (!storage) {
+    registerSetupRoutes(app, config, null, null, dependencies.setupRunner);
+    app.get('/api/health', (_request, reply) =>
+      reply.code(503).send({
+        status: 'error',
+        service: 'career-workspace',
+        database: 'unavailable',
+      }),
+    );
+    app.get('/api/setup', () => ({
+      database: { path: config.databasePath },
+      projects: config.projects.map((p) => {
+        let available = false;
+        try {
+          available = statSync(p.path).isDirectory();
+        } catch {
+          /* Missing sibling. */
+        }
+        return { ...p, available };
+      }),
+    }));
+    app.setNotFoundHandler((_request, reply) =>
+      reply.code(503).send({
+        error:
+          'Workspace database unavailable. Open Settings or Setup to correct the local path, then restart.',
+      }),
+    );
+    return app;
+  }
+  const { db, sqlite } = storage;
   const careerOps = new CareerOpsService(
     config,
     new ApplicationService(new ApplicationRepository(db)),
     dependencies.careerOpsRunner,
+  );
+  registerSetupRoutes(
+    app,
+    config,
+    storage,
+    careerOps,
+    dependencies.setupRunner,
   );
   registerCareerOpsRoutes(app, careerOps, config);
   registerWorkspaceRoutes(app, db, config, careerOps);

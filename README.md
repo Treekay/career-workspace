@@ -38,9 +38,9 @@ F:/code/
 The other projects retain their own code, dependencies, Git repositories, and data.
 This repository does not import sibling modules or copy their code. Discover reads
 its export, and Career Ops runs its existing workflows through a read-only CLI adapter.
-The workspace does not modify sibling files. Settings only checks whether configured
-directories exist. Discover reads the generated review queue through a read-only
-adapter; ingestion remains in job-alert-workflow.
+Discover reads the generated review queue through a read-only adapter; ingestion
+remains in job-alert-workflow. The explicit Setup Career Ops test runs its existing
+doctor, which may create missing onboarding templates without replacing user files.
 
 To customize paths or ports:
 
@@ -48,8 +48,9 @@ To customize paths or ports:
 Copy-Item .env.example .env
 ```
 
-Edit .env, then restart development. Existing process environment variables take
-precedence over .env. All relative paths resolve against this repository's root,
+Use Settings or the Setup Wizard to save paths and endpoint locally, then restart
+development. Explicit process environment variables override saved settings; saved
+settings override .env defaults. All relative paths resolve against this repository's root,
 including when the compiled server is launched from another working directory.
 Absolute paths are also supported. In .env, forward slashes work well on Windows.
 
@@ -65,8 +66,8 @@ Absolute paths are also supported. In .env, forward slashes work well on Windows
 
 GET /api/setup reports configured/resolved project paths, directory availability,
 and the database path. Missing siblings do not prevent startup. This endpoint is
-read-only; edit .env to change configuration. There is no browser configuration
-writer in this phase. Keep this unauthenticated development workspace on loopback.
+read-only. The guarded /api/setup/settings endpoint powers the local configuration
+form in Settings and Setup. Keep this unauthenticated development workspace on loopback.
 
 ## Pages
 
@@ -78,7 +79,8 @@ writer in this phase. Keep this unauthenticated development workspace on loopbac
 - Career Ops: optional workflow provider status and connection test; draft actions live on application detail.
 - Application detail: /applications/:id with JD snapshot, analysis, artifacts, timeline,
   quick stage changes, and editable notes/next action.
-- Settings / Setup: live API diagnostics for local paths and storage.
+- Settings: editable local configuration, diagnostics, rerun checks and reset setup state.
+- Setup Wizard: /setup, five steps from local storage through final verification.
 - Unknown routes: a navigation recovery page.
 
 Tracker functionality is available through the API described below. No sample
@@ -123,7 +125,7 @@ drizzle/ with the change, then apply the migration. Startup also applies pending
 migrations, preserving existing metadata. Back up the database before future
 schema changes. No destructive reset command is provided.
 
-If a sibling is marked "Not found", verify .env and restart. If the API cannot
+If a sibling is marked "Not found", verify Settings and any environment override, then restart. If the API cannot
 start, inspect terminal output for a port conflict, invalid configuration, or
 database write permissions. SQLite and its WAL files are local and Git-ignored;
 .env is ignored too.
@@ -533,7 +535,7 @@ other Career Ops implementation is copied here. V1 delegates exactly one mode:
 
 ### Setup and connection
 
-Keep the sibling at `../career-ops`, or set CAREER_OPS_PATH in `.env` and restart.
+Keep the sibling at `../career-ops`, or edit its path in Settings and restart.
 Prepare the candidate files using that project's own PORTABILITY.md/doctor workflow.
 User data resolves from CAREER_OPS_ROOT, then CAREER_OPS_DATA_DIR, then the sibling's
 `.career-ops-data` marker, then the sibling root. The workspace reads these paths;
@@ -545,7 +547,7 @@ Windows requires an .exe, not a PowerShell/cmd shim or a command string. The ada
 uses shell-free argv and sends the job context through stdin, not command arguments.
 CAREER_OPS_TIMEOUT_SECONDS defaults to 600, with an allowed range of 10–1800.
 
-Open Settings / Setup or Career Ops, then **Test connection**:
+Open Settings, then **Test connection** (or **Test Career Ops** for the doctor):
 
 - **Missing:** sibling directory is absent.
 - **Invalid:** required workflow/profile files, executable, CLI flags, or CLI login
@@ -637,9 +639,9 @@ a signed-in CLI with model access.
 
 The six primary pages share one navigation shell: **Overview**, **Discover**,
 **Applications**, **Analytics**, **Career Ops**, and **Settings**. Settings is the
-single place for integration configuration and connection tests; configuration
-still lives in the root `.env` and takes effect after restarting development.
-There is no setup wizard in this phase.
+single place for integration configuration and connection tests. The Setup Wizard
+uses the same validated local settings. Configuration changes take effect after
+restarting development.
 
 Responsibilities remain separate:
 
@@ -695,3 +697,101 @@ Verification: `npm run check` runs backend tests, type checks and production bui
 `npm run test:browser` exercises navigation, filtering, detail actions, provider
 results and responsive layouts. `npm run format:check` checks formatting. There is
 no separate lint command. No new migration is required for these read-only views.
+
+## First-run Setup Wizard
+
+Start with `npm ci` and `npm run dev`, then use **Start setup** on the first-run
+banner or visit `/setup`. Tracking is not locked behind setup; optional repositories
+can be connected later. Settings always provides **Open Setup Wizard**.
+
+1. **Local workspace:** confirm the SQLite path and click **Verify read/write
+   permissions**. Startup creates the database and applies existing Drizzle migrations.
+   The check writes/reads/removes its own temporary file and rolls back a metadata
+   probe, leaving applications and history untouched. The displayed directory is
+   SQLite's directory. Existing provider artifacts remain under the workspace's
+   `data/applications/`; changing SQLite's path does not relocate artifacts or data.
+2. **EasySeek:** verify the sibling path (default `../EasySeek`). In Chrome, enter
+   `chrome://extensions`, enable Developer mode, choose Load unpacked and select that
+   repository. The wizard can copy the address; websites cannot reliably open Chrome's
+   internal page and there is no silent installation. Enable Career Workspace in the
+   extension, copy the configured endpoint, and use its Test connection. The workspace
+   defaults to port 3001; EasySeek's own default may be 8765, so use the displayed value.
+   Enter an exact `chrome-extension://<32-letter-extension-id>` origin if needed.
+   Workspace connection tests prove API/database reachability, not browser installation.
+3. **Job Alerts / Gmail:** run the health check to inspect the repository, query config,
+   CSV export, generated review queue and latest recorded run date. The producer has
+   no exact run-time ledger; unknown timestamps are not fabricated. **Run daily workflow
+   now** opens an explicit handoff: open `../job-alert-workflow` in a Codex session with
+   Gmail connected through its existing app/plugin UI and use `Run daily job alert
+workflow.` The sibling's README and daily skill own authentication, ingestion,
+   retention, exports and its Git steps. This button does **not** secretly launch or
+   claim completion of a headless workflow. Return and rerun checks afterward.
+4. **Career Ops:** verify `../career-ops`, PORTABILITY.md, candidate prerequisite files
+   and local workflow availability. **Test Career Ops** executes only the sibling's
+   existing `node doctor.mjs --json` using Node with fixed arguments, no shell, a timeout
+   and bounded output. Data-root environment/marker resolution stays with career-ops.
+   Doctor may initialize missing personalization templates; existing files are not
+   replaced. The UI shows readiness, known missing filenames and warning counts, not
+   CV/profile contents or raw plugin/credential diagnostics. Resolve onboarding and
+   warnings within career-ops, then test again. Workflow availability also checks the
+   existing native CLI/login; no model generation occurs during setup.
+5. **Final verification:** rerun checks, review optional missing pieces separately,
+   then **Mark setup complete**. SQLite read/write readiness is mandatory. EasySeek,
+   Job Alerts, Review Queue and Career Ops are optional. Completion records a timestamp;
+   it does not imply Gmail authentication or that every optional module is connected.
+
+### Local settings and reset
+
+The wizard and Settings share the same form and API. **Save configuration** writes
+`.workspace-local.json` atomically; this file is Git-ignored and contains only local
+paths, the HTTP localhost endpoint, explicit extension origins and setup state.
+No Gmail tokens, GitHub credentials, OpenAI keys or browser cookies are accepted.
+Each module keeps its own credential storage. Do not paste credentials into paths.
+
+Restart both servers after saving changes (`Ctrl+C`, then `npm run dev`). Pending
+changes are clearly marked; checks keep using the active configuration until restart.
+Changing the endpoint changes the backend port after restart and updates Vite's proxy;
+then update the endpoint in EasySeek too. The API remains bound to 127.0.0.1.
+Changing the database path selects/initializes a database there; the original database
+and artifact files remain intact. No automatic data migration or deletion takes place.
+Changed configuration clears the completion marker. **Reset setup state only** clears
+that marker and leaves all configuration, records and artifacts intact.
+
+Precedence: explicitly supplied process environment → saved local configuration →
+`.env` defaults → built-in sibling defaults. Process-controlled fields are disabled
+with an explanation in Settings; remove the process override to edit them in the UI.
+Paths are relative to the workspace repository root, never the current shell directory.
+`WORKSPACE_CONFIG_PATH` optionally selects another local settings file; automated browser
+tests use this to avoid touching personal configuration. Never commit that file.
+
+### Setup troubleshooting
+
+- **Database unavailable:** Setup and Settings remain accessible if SQLite cannot open.
+  Choose a writable SQLite file path, save, restart, and check again. Preserve existing
+  files; do not delete the database to fix permissions. Invalid ports/environment values
+  must be corrected in the shell or .env if they prevent startup before the API binds.
+- **Permission check fails:** verify the displayed database directory and filesystem
+  permissions. The repository must also permit writing the local settings file.
+- **EasySeek test fails:** check both tools use the same localhost port, enable the
+  optional handoff, and configure the actual extension origin. A found repository does
+  not prove the extension is installed. EasySeek marking continues when the API is offline.
+- **Gmail unavailable:** connect Gmail in the sibling's Codex session via its external
+  authentication UI. The workspace cannot inherit or bypass a desktop-session connector.
+- **Missing/stale queue:** finish the sibling daily workflow and rerun health checks.
+  A CSV alone does not prove the review-queue JSON is present or fresh.
+- **Career Ops incomplete:** follow its PORTABILITY.md and doctor output locally. Keep
+  credentials in its existing tooling. CLI connection and doctor readiness are separate;
+  a healthy profile alone does not prove model access.
+- **Settings file invalid:** repair its JSON/allowed path fields locally; the API refuses
+  to overwrite malformed configuration silently. No credential fields are allowed.
+- **Save seems ineffective:** restart both servers and check for explicit process
+  overrides. Final verification cannot complete while saved changes await restart.
+
+Setup API: `GET /api/setup/state`; JSON-only POSTs to `/api/setup/settings`,
+`/api/setup/check`, `/api/setup/complete`, `/api/setup/reset`,
+`/api/setup/career-ops/test`, and `/api/setup/job-alerts/daily`. All are restricted to
+loopback hosts and same-workspace origins. Unknown keys and remote endpoints are rejected.
+No new database migration is needed. `tests/setup.test.ts` exercises an empty temporary
+configuration/database, restart persistence, reset retention, unavailable storage,
+credential/origin rejection and sanitized doctor results. `tests/setup.spec.ts` verifies
+the browser wizard, external handoff, persistence, completion, reset and narrow layouts.

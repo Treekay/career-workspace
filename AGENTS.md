@@ -41,7 +41,18 @@
 
 - Resolve relative paths against the project root, never the current shell directory.
 - Keep sibling defaults portable: ../EasySeek, ../job-alert-workflow, ../career-ops.
-- Read local configuration from .env/process environment. Commit only .env.example.
+- Setup/Settings persist only validated paths, loopback endpoint, exact extension
+  origins and completion state in the ignored .workspace-local.json. Explicit process
+  environment wins over saved values, then .env defaults. Changes require restart;
+  never move/delete databases or artifacts when changing paths or resetting setup.
+- Setup mutations are loopback/origin guarded, JSON-only, allowlisted and atomic.
+  Never accept or store Gmail tokens, API keys, cookies or credentials.
+- The explicit Setup Career Ops test may run its existing doctor, which can create
+  missing onboarding templates. Surface only sanitized status/counts, never profile
+  contents, plugin secrets or raw process output. Do not auto-run doctor on page load.
+- Job Alerts daily setup action hands off to its Gmail-connected Codex session.
+  Do not invent an authenticated headless ingestion API or claim a run started here.
+- Commit only .env.example; never local configuration or setup state.
 - Missing sibling folders should be shown as setup diagnostics, not crash startup.
 - Keep local databases, WAL files, dependencies, and build output out of Git.
 - Use Drizzle schemas and checked-in generated SQL migrations. Do not modify

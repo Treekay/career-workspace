@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { registerApplicationRoutes } from './applications/routes.js';
 import { statSync } from 'node:fs';
 import { sql } from 'drizzle-orm';
 import { readConfig, type WorkspaceConfig } from '../config/runtime.js';
@@ -39,5 +40,6 @@ export function buildApp(
       return { ...project, available };
     }),
   }));
+  registerApplicationRoutes(app, db);
   return app;
 }

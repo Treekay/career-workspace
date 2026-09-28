@@ -20,7 +20,8 @@
     "db:migrate": "tsx server/db/migrate.ts",
     "test:browser": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:inspect": "tsx server/db/inspect.ts"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
@@ -29,7 +30,8 @@
     "fastify": "^5.12.5",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",

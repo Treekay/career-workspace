@@ -8,9 +8,15 @@
   copy their source, import their internal modules, or modify their repositories
   as part of work here. Any future integration must use an explicit adapter and
   documented interface.
-- This phase implements infrastructure and navigation only. Do not add tracker
-  functionality, job import, application tables, or simulated analytics without
-  a new user request.
+- The tracker stores only explicitly followed jobs, not the entire job market.
+  Keep discovery/browser memory independent from durable application records.
+  The tracker UI, market import, and analytics remain outside the current phase.
+- Route application writes through ApplicationService. Stage changes and their
+  events must commit atomically; repeated current-stage requests are no-ops.
+- Preserve append-only events and restrictive foreign keys. DELETE archives;
+  browser cache expiry must never purge applications, events, or artifacts.
+- Canonical keys are non-unique hints. Never auto-merge applications by key,
+  URL, title, company, or source ID without a separately authorized merge flow.
 - No authentication, cloud database, SaaS deployment, or Docker is needed.
 - Bind development and preview services to 127.0.0.1. Do not expose this
   unauthenticated workspace to the network.

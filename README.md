@@ -1,9 +1,10 @@
 # Career Workspace
 
 A local-first home for a job search, built with TypeScript, React + Vite, Fastify,
-SQLite (better-sqlite3), and Drizzle ORM. This phase provides infrastructure and
-navigation only. There is no application tracker, imported job data, authentication,
-cloud database, deployment setup, or Docker dependency.
+SQLite (better-sqlite3), and Drizzle ORM. Includes the navigation shell and a local
+application tracker API with durable stage history and artifact references.
+The tracker UI is deferred. There is no market import, authentication, cloud
+database, deployment setup, or Docker dependency.
 
 ## Start
 
@@ -72,8 +73,8 @@ writer in this phase. Keep this unauthenticated development workspace on loopbac
 - Settings / Setup: live API diagnostics for local paths and storage.
 - Unknown routes: a navigation recovery page.
 
-No tracker tables, application CRUD endpoints, sample applications, or fabricated
-analytics are included.
+Tracker functionality is available through the API described below. No sample
+applications or fabricated analytics are seeded.
 
 ## Structure
 
@@ -81,6 +82,7 @@ analytics are included.
 client/             React pages, navigation shell, styles
 server/             Fastify app and entrypoint
 server/db/          Drizzle schema, SQLite connection, migration runner
+server/applications/ Repository, transaction service, validation, API routes
 shared/             API response types
 config/             Root-relative environment configuration
 drizzle/            Generated SQL migrations and snapshots (commit these)
@@ -149,3 +151,133 @@ format sources and npm run format:check to verify formatting.
 The package override for @esbuild-kit/core-utils selects a patched esbuild version
 for Drizzle Kit's transitive tooling dependency. Revisit it when updating Drizzle
 Kit; verify both first-time and repeated migration generation after updates.
+
+## Application tracker API
+
+The tracker stores only jobs you explicitly decide to follow. There is no market
+crawler, discovery-cache import, automatic ingestion, or cache-expiry job.
+
+### Model and retention
+
+- **applications**: UUID id; required source, title, company; source_job_id,
+  canonical_key, location, url; stage; applied_at, created_at, updated_at;
+  jd_markdown, jd_saved_at; fit_level, fit_score, analysis_summary; next_action,
+  next_action_at; notes. Optional fields are nullable. The additional deleted_at
+  timestamp implements archival without losing history.
+- **application_events**: increasing integer id, application_id, event_type,
+  destination/current stage, event_at, note. Events are ordered by id so transitions
+  in the same millisecond remain ordered. Event types are CREATED, STAGE_CHANGED,
+  ARTIFACT_ADDED, and ARCHIVED. SQL triggers reject event updates and deletes.
+- **artifacts**: UUID id, application_id, type, path, created_at. Types are JD, CV,
+  COVER_LETTER, ANALYSIS, and INTERVIEW_NOTES. Paths are references only; registering
+  one does not read, upload, copy, serve, or delete a file. Relative paths are
+  intended to refer to the workspace root; absolute paths may reference your other
+  local storage. No file existence requirement is imposed.
+
+Both child tables use restrictive foreign keys, never cascade deletion.
+There is no reference from applications to browser/discovery memory. Clearing
+browser storage or expiring a future discovery cache cannot remove tracked jobs.
+This does not replace backing up the SQLite file.
+
+Stages: SAVED, PREPARING, APPLIED, SCREENING, INTERVIEW, OFFERED, REJECTED, WITHDRAWN.
+Creation defaults to SAVED; an explicitly supplied initial stage is supported.
+Every creation has a CREATED event. Use the stage endpoint for transitions;
+PATCH rejects stage. Any explicit change between these stages is allowed,
+including reopening after rejection/withdrawal. Each actual change creates exactly
+one STAGE_CHANGED event in the same immediate SQLite transaction as the row update.
+Repeating the current stage is a no-op, including its note and updated_at.
+A failure to write the event rolls back the entire transaction.
+
+All timestamps use UTC ISO 8601 text. Input dates must include a time and timezone.
+Entering APPLIED fills applied_at only if it is missing; moving away or returning
+does not clear it. An explicitly known historical applied_at can be supplied on
+creation or corrected through PATCH. Other stages do not invent an application
+date. Saving/changing jd_markdown automatically sets jd_saved_at unless explicitly
+provided; clearing the JD through PATCH also clears that timestamp by default.
+
+fit_score is an optional number from 0 to 100. fit_level is optional free text,
+so no unrequested rating taxonomy is imposed. No fit score is calculated here.
+
+canonical_key is a **non-unique, indexed hint**. On creation, it defaults to
+source:source_job_id when an ID exists (for example seek:123); otherwise null.
+An explicit key can correlate SEEK and LinkedIn entries later, but even identical
+keys/source IDs create independent records. No title/company matching or auto-merge
+runs. Keys remain stable when other metadata is edited; update canonical_key
+explicitly if correcting source identity. Preserve both records and histories
+until a future explicit merge workflow is designed.
+
+DELETE archives by setting deleted_at and appending one ARCHIVED event.
+Repeated DELETE is idempotent. Normal reads hide archived records; they remain
+available with include_deleted=true. History and artifact reads remain available
+after archival. Writes to archived applications return 404. There is no hard
+delete, purge, restore, or event-edit API in this phase.
+
+### Routes
+
+All bodies and responses use snake_case. Unknown body/query fields and invalid
+enums, dates, URLs, scores, or IDs return 400; missing records return 404.
+
+| Method | Path                            | Behavior                                                                                                         |
+| ------ | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| POST   | /api/applications               | Create; JSON requires source, title, company; returns 201 and Location                                           |
+| GET    | /api/applications               | List, newest creation first; optional stage, include_deleted=true, limit (1–200, default 50), offset (default 0) |
+| GET    | /api/applications/:id           | Read; optional include_deleted=true                                                                              |
+| PATCH  | /api/applications/:id           | Change metadata; omit unchanged fields, use null to clear nullable fields                                        |
+| DELETE | /api/applications/:id           | Archive; returns 204                                                                                             |
+| POST   | /api/applications/:id/stage     | Body: stage and optional note                                                                                    |
+| GET    | /api/applications/:id/events    | Read retained event history, oldest insertion first                                                              |
+| POST   | /api/applications/:id/artifacts | Body: type and path; returns 201                                                                                 |
+| GET    | /api/applications/:id/artifacts | Read artifact references, including after archive                                                                |
+
+List routes return JSON arrays; individual writes/reads return the saved object.
+IDs and created_at/updated_at/deleted_at are server-managed.
+The service is the required write boundary for future adapters: do not mutate
+application rows directly from a discovery/browser integration.
+
+### Verify without adding UI
+
+With npm run dev running, this PowerShell example intentionally creates one
+tracked application (use a test database via DATABASE_PATH if preferred):
+
+```powershell
+$api = 'http://127.0.0.1:3001/api/applications'
+$body = @{ source = 'other'; title = 'Example role'; company = 'Example company' } | ConvertTo-Json
+$application = Invoke-RestMethod -Method Post -Uri $api -ContentType 'application/json' -Body $body
+Invoke-RestMethod -Method Post -Uri "$api/$($application.id)/stage" -ContentType 'application/json' -Body '{"stage":"APPLIED","note":"Submitted application"}'
+Invoke-RestMethod -Uri "$api/$($application.id)/events"
+```
+
+### Migrations and schema inspection
+
+Existing databases upgrade in place. The initial metadata migration is unchanged.
+0001_application_tracker adds the three tables, indexes, checks, and foreign keys.
+0002_append_only_history installs the event immutability triggers.
+
+```powershell
+npm run db:migrate
+npm run db:inspect
+npm run check
+```
+
+db:inspect opens the configured database read-only and prints columns, indexes,
+foreign keys, table/trigger definitions, foreign_key_check, and integrity_check.
+Run migrations first if the database has not been created yet.
+
+For future schema changes:
+
+```powershell
+npm run db:generate -- --name=describe_change
+# Review the generated SQL before applying.
+npm run db:migrate
+npm run db:inspect
+```
+
+Use a new custom migration for trigger changes; never edit an applied migration.
+If a future migration rebuilds application_events, preserve/recreate its immutable
+history triggers. Back up local data before schema changes. Startup also applies
+pending migrations; it does not reset tables.
+
+The tests cover CRUD, each stage, repeated transitions, retained applied_at,
+atomic rollback on event-write failures, archives, artifact types, duplicate keys,
+validation/SQL constraints, immutable history, upgrading an original database,
+and persistence after browser-cache expiry and database reopen.

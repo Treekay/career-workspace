@@ -51,7 +51,7 @@ test('migrations are idempotent and metadata persists across reopen', () => {
       const tables = connection.sqlite
         .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
         .all();
-      assert.ok(!JSON.stringify(tables).includes('applications'));
+      assert.ok(JSON.stringify(tables).includes('applications'));
     } finally {
       connection.sqlite.close();
     }
@@ -89,7 +89,7 @@ test('health queries SQLite; setup tolerates missing siblings and rejects files 
       [true, false, false],
     );
     assert.equal(
-      (await app.inject({ method: 'GET', url: '/api/applications' }))
+      (await app.inject({ method: 'GET', url: '/api/not-implemented' }))
         .statusCode,
       404,
     );

@@ -206,8 +206,9 @@ function Settings() {
             <p>SQLite database</p>
             <code className="resolved">{data.database.path}</code>
             <p>
-              Only workspace metadata is stored in this phase. Finding a project
-              directory does not import data or run its code.
+              Workspace metadata and explicitly tracked applications are stored
+              locally. Finding a project directory does not import data or run
+              its code.
             </p>
           </section>
         </>

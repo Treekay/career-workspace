@@ -42,7 +42,7 @@ export function buildApp(
       return { ...project, available };
     }),
   }));
-  registerApplicationRoutes(app, db);
+  registerApplicationRoutes(app, db, config);
   registerAnalyticsRoutes(app, db);
   registerDiscoverRoutes(app, config);
   return app;

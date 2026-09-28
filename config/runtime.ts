@@ -46,7 +46,24 @@ export function readConfig(
   const discoverStaleHours = Number(env.DISCOVER_STALE_HOURS ?? 36);
   if (!Number.isFinite(discoverStaleHours) || discoverStaleHours <= 0)
     throw new Error('DISCOVER_STALE_HOURS must be a positive number');
+  const importExtensionOrigins = (env.IMPORT_EXTENSION_ORIGINS ?? '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  if (
+    importExtensionOrigins.some(
+      (value) =>
+        !/^chrome-extension:\/\/[a-p]{32}$/.test(value) &&
+        !/^moz-extension:\/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
+          value,
+        ),
+    )
+  )
+    throw new Error(
+      'IMPORT_EXTENSION_ORIGINS must contain exact chrome-extension or moz-extension origins',
+    );
   return {
+    importExtensionOrigins,
     discoverStaleHours,
     root,
     host: '127.0.0.1' as const,

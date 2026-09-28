@@ -21,5 +21,6 @@ export const applicationEventTypes = [
   'STAGE_CHANGED',
   'ARCHIVED',
   'ARTIFACT_ADDED',
+  'IMPORTED',
 ] as const;
 export type ApplicationStage = (typeof applicationStages)[number];

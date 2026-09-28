@@ -420,3 +420,98 @@ Tests use temporary export fixtures and isolated databases. Coverage includes
 retention/timezone boundaries, stale/missing/invalid exports, read-only behavior,
 file limits, redirected paths, unsafe URLs, all controls, new-tab isolation,
 error recovery, and desktop/mobile layouts. No fixture jobs are seeded locally.
+
+## Browser-extension import API
+
+`POST /api/applications/import` accepts an explicit browser Saved/Applied handoff.
+Start with `npm run dev`; use `http://127.0.0.1:3001/api/applications/import`.
+The endpoint is local-only, JSON-only, and limited to a 1 MiB request body.
+
+```json
+{
+  "source": "seek",
+  "sourceJobId": "12345",
+  "canonicalKey": "seek:12345",
+  "title": "Software Engineer",
+  "company": "Example",
+  "location": "Auckland",
+  "url": "https://www.seek.co.nz/job/12345",
+  "jdMarkdown": "# Job description\nCaptured text",
+  "mark": "SAVED",
+  "requestedStage": "SAVED"
+}
+```
+
+Required: `source` (`seek`, `linkedin`, `other`), nonblank `title` and `company`,
+and `requestedStage` (`SAVED` or `APPLIED`). Provide a nonblank string sourceJobId
+or an equivalent `source:id` canonicalKey; SEEK/LinkedIn IDs must be positive
+digit strings. The other fields are optional. `mark` accepts `NONE`, `SAVED`,
+or `APPLIED`; requestedStage controls the handoff. `SKIP` and a contradictory
+APPLIED mark with requestedStage SAVED are rejected. SAVED mark plus requestedStage
+APPLIED is valid because EasySeek keeps its mark and application stage separately.
+Unknown fields, including notes/artifacts, are rejected.
+
+The response is `{ "outcome": "created|updated|unchanged", "application": ... }`.
+The application uses the existing snake_case tracker response. Creation returns
+201; updates and identical retries return 200, with a Location header for detail.
+Validation errors return 400, origin/local-client failures 403, identity conflicts
+409, non-JSON requests 415, and oversized requests 413.
+
+### Identity, updates, and history
+
+- Matching uses exact `(source, sourceJobId)` or same-source `source:id` canonical
+  identity. A canonical-only strong match fills the missing source ID. All matching
+  rows, including archives, are checked within one immediate SQLite transaction.
+- EasySeek's company/location/title canonical keys are retained as hints only.
+  They never merge distinct source IDs or match across SEEK/LinkedIn. Weak-key-only
+  payloads need a source ID; no title/company/URL fuzzy merge occurs.
+- Conflicting identities, multiple matches, and archived matches return 409 without
+  writes. Resolve these explicitly in the workspace; imports do not restore archives.
+- Imports may update title, company, location, URL, and a nonblank JD snapshot.
+  Null/omitted optional fields and blank JDs never clear existing data. An unchanged
+  JD retains jd_saved_at. Existing canonical hints are preserved.
+- Notes, artifacts, fit/analysis, next actions, and created_at are never overwritten.
+  Identical retries preserve updated_at and do not append redundant events.
+- New records create a CREATED event at SAVED or APPLIED. An APPLIED handoff advances
+  SAVED/PREPARING only when no APPLIED history exists, with a STAGE_CHANGED event.
+  A SAVED handoff never downgrades a record. Repeated APPLIED handoffs never undo
+  manual progress, closure, or a manual return to an earlier stage.
+- Changed import metadata/JD creates an IMPORTED event without resetting stage age.
+  If a later-stage record has no APPLIED history, an IMPORTED event records the
+  APPLIED assertion while preserving its current stage. Its timestamp is receipt
+  time, not a reconstructed historical transition. Such assertions are not inserted
+  into the chronological analytics funnel. A missing applied_at is set to receipt
+  time; an existing applied_at is preserved.
+- All row changes and events commit atomically. Failed event writes roll back the
+  import. These rules do not change the ordinary create API's independent records.
+
+### Local browser access
+
+CORS applies only to this import route. Default allowed origins are exact HTTP
+localhost, 127.0.0.1, or [::1] origins at API_PORT and WEB_PORT. Other ports, remote
+sites (including job sites), opaque `null` origins, and arbitrary extensions are
+rejected before a write. Only POST with Content-Type is permitted by preflight;
+credentials are not enabled. Local command-line clients may omit Origin.
+The route also checks the loopback client address and local Host header. CORS is
+not authentication; this remains a trusted, single-user local service.
+
+To allow EasySeek, copy its actual ID from the browser's extension management page
+and set an exact origin in `.env`, then restart:
+
+```dotenv
+IMPORT_EXTENSION_ORIGINS=chrome-extension://YOUR_ACTUAL_32_CHARACTER_EXTENSION_ID
+```
+
+The placeholder above must be replaced with the real ID (32 lowercase letters a-p).
+Multiple explicit origins can be comma-separated. Exact Firefox moz-extension UUID
+origins are also accepted. An empty setting enables no extension origins. Use the
+extension background/service worker for the handoff, with a narrowly scoped local
+host permission; requests directly from a SEEK/LinkedIn page origin are denied.
+This change supplies the workspace endpoint only and does not modify EasySeek.
+
+Migration `0003_application_import_events` adds IMPORTED to the event constraint,
+preserves existing event rows/IDs, and recreates append-only triggers. Startup
+applies it automatically, or run `npm run db:migrate`; `npm run db:inspect` verifies
+the schema. Back up your database before applying schema changes. Tests cover
+populated upgrades, repeat/concurrent imports, rollback, ambiguous identities,
+manual-data preservation, late handoffs, and allowed/denied browser origins.

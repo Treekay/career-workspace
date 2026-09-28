@@ -1,3 +1,5 @@
+import { importAccess } from './import-access.js';
+import type { WorkspaceConfig } from '../../config/runtime.js';
 import type { FastifyInstance } from 'fastify';
 import { ZodError } from 'zod';
 import { ApplicationRepository, type WorkspaceDatabase } from './repository.js';
@@ -6,6 +8,7 @@ import { ApplicationNotFound, ApplicationService } from './service.js';
 export function registerApplicationRoutes(
   app: FastifyInstance,
   db: WorkspaceDatabase,
+  config: WorkspaceConfig,
 ) {
   // Encapsulate error handling so existing infrastructure routes keep their behavior.
   app.register(
@@ -35,6 +38,23 @@ export function registerApplicationRoutes(
         request.log.error(error);
         return reply.code(500).send({ error: 'Internal server error' });
       });
+      const access = importAccess(config);
+      routes.options(
+        '/import',
+        { onRequest: access },
+        async (_request, reply) => reply.code(204).send(),
+      );
+      routes.post(
+        '/import',
+        { onRequest: access, bodyLimit: 1024 * 1024 },
+        async (request, reply) => {
+          const result = service.import(request.body);
+          return reply
+            .code(result.outcome === 'created' ? 201 : 200)
+            .header('Location', '/api/applications/' + result.application.id)
+            .send(result);
+        },
+      );
       routes.post('/', async (request, reply) => {
         const application = service.create(request.body);
         return reply

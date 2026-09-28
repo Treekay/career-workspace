@@ -90,7 +90,7 @@ export const applicationEvents = sqliteTable(
     ),
     check(
       'application_events_type_check',
-      sql`${table.event_type} IN ('CREATED', 'STAGE_CHANGED', 'ARCHIVED', 'ARTIFACT_ADDED')`,
+      sql`${table.event_type} IN ('CREATED', 'STAGE_CHANGED', 'ARCHIVED', 'ARTIFACT_ADDED', 'IMPORTED')`,
     ),
     check(
       'application_events_stage_check',

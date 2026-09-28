@@ -24,6 +24,10 @@
   browser cache expiry must never purge applications, events, or artifacts.
 - Canonical keys are non-unique hints. Never auto-merge applications by key,
   URL, title, company, or source ID without a separately authorized merge flow.
+- Browser import is an explicitly authorized matching adapter: only exact same-source
+  job IDs or source:id identities may match. Reject ambiguous/archived matches;
+  never merge EasySeek's weak company/location/title keys. Preserve manual notes,
+  artifacts, and stage progress. Keep its CORS origins explicit and local.
 - No authentication, cloud database, SaaS deployment, or Docker is needed.
 - Bind development and preview services to 127.0.0.1. Do not expose this
   unauthenticated workspace to the network.

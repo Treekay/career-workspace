@@ -235,9 +235,11 @@ export function ApplicationDetail() {
                       ? 'Tracking started'
                       : event.event_type === 'STAGE_CHANGED'
                         ? 'Moved to ' + labels[event.stage]
-                        : event.event_type === 'ARCHIVED'
-                          ? 'Archived'
-                          : 'Artifact added'}
+                        : event.event_type === 'IMPORTED'
+                          ? 'Browser import'
+                          : event.event_type === 'ARCHIVED'
+                            ? 'Archived'
+                            : 'Artifact added'}
                   </strong>
                   {event.event_type === 'CREATED' && (
                     <StageBadge stage={event.stage} />

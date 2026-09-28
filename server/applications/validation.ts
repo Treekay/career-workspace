@@ -63,3 +63,49 @@ export const listQuery = z.strictObject({
   offset: z.coerce.number().int().min(0).default(0),
 });
 export type ListOptions = z.output<typeof listQuery>;
+
+// Browser handoff uses camelCase; null/omitted optional fields never clear data.
+export const importApplicationInput = z
+  .strictObject({
+    source: z.enum(applicationSources),
+    sourceJobId: text.nullable().optional(),
+    canonicalKey: text.nullable().optional(),
+    title: text,
+    company: text,
+    location: text.nullable().optional(),
+    url: fields.url,
+    jdMarkdown: z.string().max(500000).nullable().optional(),
+    mark: z.enum(['NONE', 'SKIP', 'SAVED', 'APPLIED']).optional(),
+    requestedStage: z.enum(['SAVED', 'APPLIED']),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.mark === 'SKIP' ||
+      (data.mark === 'APPLIED' && data.requestedStage !== 'APPLIED')
+    )
+      ctx.addIssue({
+        code: 'custom',
+        path: ['mark'],
+        message: 'Mark conflicts with an active handoff',
+      });
+    const key = data.canonicalKey?.match(/^(seek|linkedin|other):([^:]+)$/);
+    if (
+      key &&
+      (key[1] !== data.source ||
+        (data.sourceJobId && key[2] !== data.sourceJobId))
+    )
+      ctx.addIssue({
+        code: 'custom',
+        path: ['canonicalKey'],
+        message: 'Canonical identity conflicts with source ID',
+      });
+    const id =
+      data.sourceJobId || (key?.[1] === data.source ? key[2] : undefined);
+    if (!id || (data.source !== 'other' && !/^[1-9][0-9]*$/.test(id)))
+      ctx.addIssue({
+        code: 'custom',
+        path: ['sourceJobId'],
+        message:
+          'Provide a strong source job ID or source:id canonical key (numeric for SEEK/LinkedIn)',
+      });
+  });

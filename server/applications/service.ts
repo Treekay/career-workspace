@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ApplicationRepository } from './repository.js';
 import {
+  importApplicationInput,
   applicationId,
   artifactInput,
   createApplicationInput,
@@ -15,6 +16,10 @@ export class ApplicationNotFound extends Error {
   constructor() {
     super('Application not found');
   }
+}
+
+export class ImportConflict extends Error {
+  readonly statusCode = 409;
 }
 
 export class ApplicationService {
@@ -64,6 +69,135 @@ export class ApplicationService {
         note: null,
       });
       return repository.get(application.id)!;
+    });
+  }
+  import(input: unknown) {
+    const data = importApplicationInput.parse(input);
+    const sourceId =
+      data.sourceJobId || data.canonicalKey!.slice(data.source.length + 1);
+    return this.repository.transaction((repository) => {
+      const candidates = repository.findImportIdentity(data.source, sourceId);
+      if (candidates.length > 1)
+        throw new ImportConflict(
+          'Multiple applications match this identity; resolve duplicates manually',
+        );
+      const current = candidates[0];
+      if (current?.deleted_at)
+        throw new ImportConflict(
+          'Matching application is archived; import cannot restore it',
+        );
+      if (current?.source_job_id && current.source_job_id !== sourceId)
+        throw new ImportConflict(
+          'Stored source ID conflicts with canonical identity',
+        );
+      const storedKey = current?.canonical_key?.match(
+        /^(seek|linkedin|other):([^:]+)$/,
+      );
+      if (
+        storedKey &&
+        (storedKey[1] !== data.source || storedKey[2] !== sourceId)
+      )
+        throw new ImportConflict(
+          'Stored canonical identity conflicts with source ID',
+        );
+      const now = this.now();
+      if (!current) {
+        const application = repository.insert({
+          id: randomUUID(),
+          source: data.source,
+          source_job_id: sourceId,
+          canonical_key: data.canonicalKey || data.source + ':' + sourceId,
+          title: data.title,
+          company: data.company,
+          location: data.location,
+          url: data.url,
+          stage: data.requestedStage,
+          applied_at: data.requestedStage === 'APPLIED' ? now : null,
+          jd_markdown: data.jdMarkdown?.trim() ? data.jdMarkdown : null,
+          jd_saved_at: data.jdMarkdown?.trim() ? now : null,
+          created_at: now,
+          updated_at: now,
+        });
+        repository.appendEvent({
+          application_id: application.id,
+          event_type: 'CREATED',
+          stage: application.stage,
+          event_at: now,
+          note: 'Browser import',
+        });
+        return {
+          outcome: 'created' as const,
+          application: repository.get(application.id)!,
+        };
+      }
+      const patch: Parameters<ApplicationRepository['update']>[1] = {};
+      for (const [key, value] of Object.entries({
+        title: data.title,
+        company: data.company,
+        location: data.location,
+        url: data.url,
+      })) {
+        if (
+          value != null &&
+          current[key as 'title' | 'company' | 'location' | 'url'] !== value
+        )
+          Object.assign(patch, { [key]: value });
+      }
+      if (!current.source_job_id) patch.source_job_id = sourceId;
+      if (!current.canonical_key)
+        patch.canonical_key = data.canonicalKey || data.source + ':' + sourceId;
+      if (data.jdMarkdown?.trim() && current.jd_markdown !== data.jdMarkdown) {
+        patch.jd_markdown = data.jdMarkdown;
+        patch.jd_saved_at = now;
+      }
+      const hasApplied = repository
+        .events(current.id)
+        .some(
+          (e) =>
+            e.stage === 'APPLIED' &&
+            ['CREATED', 'STAGE_CHANGED', 'IMPORTED'].includes(e.event_type),
+        );
+      const advance =
+        data.requestedStage === 'APPLIED' &&
+        ['SAVED', 'PREPARING'].includes(current.stage) &&
+        !hasApplied;
+      const recordApplied = data.requestedStage === 'APPLIED' && !hasApplied;
+      if (advance) patch.stage = 'APPLIED';
+      if (data.requestedStage === 'APPLIED' && !current.applied_at)
+        patch.applied_at = now;
+      const metadataChanged = Object.keys(patch).some((key) => key !== 'stage');
+      if (!Object.keys(patch).length && !recordApplied)
+        return {
+          outcome: 'unchanged' as const,
+          application: repository.get(current.id)!,
+        };
+      repository.update(current.id, { ...patch, updated_at: now });
+      if (advance)
+        repository.appendEvent({
+          application_id: current.id,
+          event_type: 'STAGE_CHANGED',
+          stage: 'APPLIED',
+          event_at: now,
+          note: 'Browser import: applied',
+        });
+      if (metadataChanged || (recordApplied && !advance))
+        repository.appendEvent({
+          application_id: current.id,
+          event_type: 'IMPORTED',
+          stage:
+            recordApplied && !advance
+              ? 'APPLIED'
+              : patch.stage || current.stage,
+          event_at: now,
+          note:
+            recordApplied && !advance
+              ? 'Browser reports APPLIED; current stage preserved. Original application time unknown.'
+              : 'Browser import updated job metadata or JD snapshot',
+        });
+      return {
+        outcome: 'updated' as const,
+        application: repository.get(current.id)!,
+      };
     });
   }
   get(id: string, query: unknown = {}) {

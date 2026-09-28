@@ -378,7 +378,7 @@ test('upgrade from original schema preserves metadata; application history survi
               .prepare('SELECT count(*) AS count FROM __drizzle_migrations')
               .get() as { count: number }
           ).count,
-        3,
+        4,
       );
     } finally {
       connection.sqlite.close();

@@ -1,4 +1,13 @@
-import { and, asc, desc, eq, isNull, getTableColumns, sql } from 'drizzle-orm';
+import {
+  or,
+  and,
+  asc,
+  desc,
+  eq,
+  isNull,
+  getTableColumns,
+  sql,
+} from 'drizzle-orm';
 import type { openDatabase } from '../db/client.js';
 import {
   applications,
@@ -48,6 +57,22 @@ export class ApplicationRepository {
       .orderBy(desc(applications.created_at), asc(applications.id))
       .limit(options.limit)
       .offset(options.offset)
+      .all();
+  }
+  findImportIdentity(source: 'seek' | 'linkedin' | 'other', sourceId: string) {
+    // Include archives and duplicates: the caller must resolve conflicts, never pick arbitrarily.
+    return this.db
+      .select()
+      .from(applications)
+      .where(
+        and(
+          eq(applications.source, source),
+          or(
+            eq(applications.source_job_id, sourceId),
+            eq(applications.canonical_key, source + ':' + sourceId),
+          ),
+        ),
+      )
       .all();
   }
   insert(value: NewApplication) {

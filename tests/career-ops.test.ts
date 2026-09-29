@@ -219,6 +219,9 @@ test('five existing modes receive full context via stdin, retain versioned artif
       );
       assert.ok(call.input!.includes('AGENTS.md'));
       assert.ok(call.input!.includes('SKILL.md'));
+      assert.ok(call.input!.includes('not a URL-only intake'));
+      assert.ok(call.input!.includes('Known closed-posting evidence'));
+      assert.ok(call.input!.includes('must not be invented'));
     }
     assert.equal(
       f.service.document(f.app.id, runs[0].id),

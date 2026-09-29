@@ -800,3 +800,9 @@ a fit analysis. Its `needs_input` record remains visible; retry creates a new ru
 The connection test checks installation/login prerequisites, not a full model run.
 After updating this adapter, restart the workspace and retry Analyze Fit. No credential
 changes or copying private candidate files into chat are needed.
+
+Career Ops receives the saved JD as a **snapshot evaluation**, with the original URL
+as attribution. Reports must distinguish fit against that text from current hiring
+status (unverified without reliable evidence). Missing candidate evidence stays unknown;
+explicit workflow confirmation gates and known closed-posting evidence still apply.
+A snapshot evaluation is not a claim that the employer is currently accepting applications.

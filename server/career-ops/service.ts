@@ -306,6 +306,11 @@ export class CareerOpsService {
               '--sandbox',
               'read-only',
               '--ignore-user-config',
+              // Ignoring user config also removes Windows sandbox selection.
+              // Choose the native sandbox explicitly; filesystem access stays read-only.
+              ...(process.platform === 'win32'
+                ? ['-c', 'windows.sandbox="elevated"']
+                : []),
               '--ephemeral',
               '--skip-git-repo-check',
               '--output-schema',

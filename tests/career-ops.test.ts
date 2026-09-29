@@ -201,6 +201,15 @@ test('five existing modes receive full context via stdin, retain versioned artif
       assert.ok(call.args.includes('read-only'));
       assert.ok(call.args.includes('never'));
       assert.ok(call.args.includes('--ignore-user-config'));
+      assert.equal(
+        call.args.includes('windows.sandbox="elevated"'),
+        process.platform === 'win32',
+      );
+      assert.ok(
+        !call.args.includes('--dangerously-bypass-approvals-and-sandbox'),
+      );
+      assert.ok(!call.args.includes('--ignore-rules'));
+      assert.ok(!call.args.includes('workspace-write'));
       assert.ok(!call.args.some((arg) => arg.includes(f.app.title)));
       assert.ok(call.input!.includes('Final requirement.'));
       assert.ok(call.input!.includes('untrusted job data'));

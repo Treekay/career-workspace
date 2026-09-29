@@ -784,3 +784,19 @@ No new database migration is needed. `tests/setup.test.ts` exercises an empty te
 configuration/database, restart persistence, reset retention, unavailable storage,
 credential/origin rejection and sanitized doctor results. `tests/setup.spec.ts` verifies
 the browser wizard, external handoff, persistence, completion, reset and narrow layouts.
+
+### Career Ops read-only execution on Windows
+
+The provider ignores general user CLI configuration to keep each invocation predictable.
+On Windows it explicitly selects `windows.sandbox="elevated"`, the native Windows
+sandbox implementation, while retaining `--sandbox read-only` and approval `never`.
+This does not give the model unrestricted administrator access or write access to
+candidate files. Existing execution-policy rules remain in effect. Windows sandbox
+setup must already be available through the installed Codex CLI; the adapter does
+not disable protection or silently switch to an unrestricted mode on failure.
+
+If a run reports that execution policy blocked source reading, it has not produced
+a fit analysis. Its `needs_input` record remains visible; retry creates a new run.
+The connection test checks installation/login prerequisites, not a full model run.
+After updating this adapter, restart the workspace and retry Analyze Fit. No credential
+changes or copying private candidate files into chat are needed.

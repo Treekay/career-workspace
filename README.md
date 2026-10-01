@@ -6,6 +6,34 @@ application tracker API with durable stage history and artifact references.
 Overview, application list, and detail pages use this API. There is no market import, authentication, cloud
 database, deployment setup, or Docker dependency.
 
+## Windows launcher
+
+Double-click **Career Workspace.vbs** in the repository. The small launcher offers
+**启动并打开** (start and open), **打开页面** (open browser), and **停止** (stop).
+Closing its window also stops the services it owns. You may minimize it while working.
+Create a desktop shortcut to the VBS file for daily use. Node.js 22.12+ and dependencies
+(`npm ci`, once) are still required; this is a launcher, not a standalone installer.
+
+It reads the same Settings configuration and starts Fastify and Vite in a hidden,
+owned Node process. Stop/start applies changed configuration and backend updates.
+No npm terminal, CLI login window or extra configuration is needed for daily startup.
+It does not launch Gmail workflows, install extensions, or change credentials.
+Occupied ports produce an error: stop any previous `npm run dev` terminal first.
+It never takes over or kills an existing service. Closing a browser tab does not stop it.
+
+Stop closes Vite, cancels owned Career Ops tasks through the existing service lifecycle,
+and closes SQLite. Pending analysis may be interrupted, so finish it before stopping.
+Closing the launcher's input pipe also triggers shutdown after unexpected launcher exit.
+Records and artifacts remain on disk. Only one launcher per repository can be open.
+PowerShell uses process-scoped `RemoteSigned` for the local launcher script; no permanent
+execution-policy changes occur and organization policy remains authoritative. If a
+downloaded copy is blocked, inspect its files and unblock it through Windows Properties.
+
+For a launcher-window initialization check without starting services:
+`powershell.exe -NoProfile -STA -ExecutionPolicy RemoteSigned -File scripts/launcher.ps1 -CheckOnly`.
+`tests/launcher.test.ts` uses isolated ports/config/database to check start, stop, owner
+exit, restart and occupied-port handling.
+
 ## Start
 
 Use Node.js 22.12+ (Node 22 LTS recommended) and npm. From this repository:

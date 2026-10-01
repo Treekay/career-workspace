@@ -11,5 +11,12 @@
     "types": ["node"],
     "sourceMap": true
   },
-  "include": ["server", "config", "shared", "tests", "drizzle.config.ts"]
+  "include": [
+    "server",
+    "config",
+    "shared",
+    "tests",
+    "drizzle.config.ts",
+    "scripts"
+  ]
 }

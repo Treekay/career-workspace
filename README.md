@@ -24,7 +24,8 @@ It never takes over or kills an existing service. Closing a browser tab does not
 Stop closes Vite, cancels owned Career Ops tasks through the existing service lifecycle,
 and closes SQLite. Pending analysis may be interrupted, so finish it before stopping.
 Closing the launcher's input pipe also triggers shutdown after unexpected launcher exit.
-Records and artifacts remain on disk. Only one launcher per repository can be open.
+Records and artifacts remain on disk. Only one launcher per repository can be open. Double-clicking again restores the
+existing window, including when minimized; it does not start duplicate services.
 PowerShell uses process-scoped `RemoteSigned` for the local launcher script; no permanent
 execution-policy changes occur and organization policy remains authoritative. If a
 downloaded copy is blocked, inspect its files and unblock it through Windows Properties.

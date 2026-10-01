@@ -6,10 +6,32 @@ $rootPath = Split-Path -Parent $PSScriptRoot
 $hash = [System.Security.Cryptography.SHA256]::Create()
 $key = [BitConverter]::ToString($hash.ComputeHash([Text.Encoding]::UTF8.GetBytes($rootPath.ToLowerInvariant()))).Replace('-', '')
 $hash.Dispose()
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class CareerLauncherWindow {
+  [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr window, int command);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr window);
+  private delegate bool WindowCallback(IntPtr window, IntPtr data);
+  [DllImport("user32.dll")] private static extern bool EnumWindows(WindowCallback callback, IntPtr data);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern bool SetProp(IntPtr window, string name, IntPtr value);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] private static extern IntPtr GetProp(IntPtr window, string name);
+  public static void Restore(string key) {
+    EnumWindows((window, data) => {
+      if (GetProp(window, key) == new IntPtr(1)) {
+        ShowWindowAsync(window, 9);
+        SetForegroundWindow(window);
+        return false;
+      }
+      return true;
+    }, IntPtr.Zero);
+  }
+}
+"@
 $created = $false
 $mutex = New-Object System.Threading.Mutex($true, "Local\CareerWorkspace-$key", [ref]$created)
 if (-not $created) {
-  [System.Windows.Forms.MessageBox]::Show('启动器已经打开，请查看任务栏中的 Career Workspace。', 'Career Workspace') | Out-Null
+  [CareerLauncherWindow]::Restore("CareerWorkspace-$key")
   $mutex.Dispose()
   exit
 }
@@ -25,6 +47,9 @@ $form.ClientSize = New-Object System.Drawing.Size(570, 290)
 $form.StartPosition = 'CenterScreen'
 $form.FormBorderStyle = 'FixedDialog'
 $form.MaximizeBox = $false
+$form.ShowInTaskbar = $true
+$script:firstDisplay = $true
+[void][CareerLauncherWindow]::SetProp($form.Handle, "CareerWorkspace-$key", [IntPtr]1)
 $form.Font = New-Object System.Drawing.Font('Microsoft YaHei UI', 10)
 $title = New-Object System.Windows.Forms.Label
 $title.Text = 'Career Workspace · 本地工作台'
@@ -100,6 +125,15 @@ $form.Add_FormClosing({
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 150
 $timer.Add_Tick({
+  # WScript starts PowerShell hidden; show the GUI after its message loop starts.
+  if ($script:firstDisplay) {
+    $script:firstDisplay = $false
+    $form.Show()
+    $form.WindowState = [System.Windows.Forms.FormWindowState]::Normal
+    [void][CareerLauncherWindow]::ShowWindowAsync($form.Handle, 9)
+    [void][CareerLauncherWindow]::SetForegroundWindow($form.Handle)
+    $form.Activate()
+  }
   if (-not $script:worker) { return }
   while ($script:lineTask -and $script:lineTask.IsCompleted) {
     $line = $script:lineTask.GetAwaiter().GetResult()

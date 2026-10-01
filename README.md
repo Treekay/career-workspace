@@ -835,3 +835,15 @@ as attribution. Reports must distinguish fit against that text from current hiri
 status (unverified without reliable evidence). Missing candidate evidence stays unknown;
 explicit workflow confirmation gates and known closed-posting evidence still apply.
 A snapshot evaluation is not a claim that the employer is currently accepting applications.
+
+Launcher GUI regression check (Windows, close the normal launcher first):
+
+```powershell
+powershell.exe -NoProfile -STA -ExecutionPolicy RemoteSigned -File tests/launcher-gui.ps1
+```
+
+This clicks the actual WinForms Start/Stop buttons for two cycles, uses temporary
+configuration/database and free ports, verifies the frontend API proxy, and checks
+for GUI errors. It does not open browser tabs or modify personal settings. The GUI
+uses one asynchronous reader per output stream and a thread-safe message queue;
+its timer cannot re-enter while opening the browser or processing status updates.

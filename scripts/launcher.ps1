@@ -1,4 +1,4 @@
-﻿param([switch]$CheckOnly)
+﻿param([switch]$CheckOnly, [switch]$NoBrowser)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -9,6 +9,23 @@ $hash.Dispose()
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
+public sealed class CareerLauncherOutput {
+  public readonly System.Collections.Concurrent.ConcurrentQueue<string> Lines = new System.Collections.Concurrent.ConcurrentQueue<string>();
+  private readonly object gate = new object();
+  private string errors = "";
+  public string ErrorText { get { lock(gate) { return errors; } } }
+  public CareerLauncherOutput(System.Diagnostics.Process process) {
+    process.OutputDataReceived += (sender, args) => {
+      if (args.Data != null && args.Data.StartsWith("CW_LAUNCHER ")) Lines.Enqueue(args.Data);
+    };
+    process.ErrorDataReceived += (sender, args) => {
+      if (args.Data == null) return;
+      lock(gate) { if (errors.Length < 4000) errors += args.Data + Environment.NewLine; }
+    };
+    process.BeginOutputReadLine();
+    process.BeginErrorReadLine();
+  }
+}
 public static class CareerLauncherWindow {
   [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr window, int command);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr window);
@@ -36,8 +53,7 @@ if (-not $created) {
   exit
 }
 $script:worker = $null
-$script:lineTask = $null
-$script:errorTask = $null
+$script:outputPump = $null
 $script:pageUrl = $null
 $script:closing = $false
 $script:stopAt = $null
@@ -102,8 +118,7 @@ $start.Add_Click({
     $script:worker = New-Object System.Diagnostics.Process
     $script:worker.StartInfo = $info
     if (-not $script:worker.Start()) { throw '启动失败。' }
-    $script:errorTask = $script:worker.StandardError.ReadToEndAsync()
-    $script:lineTask = $script:worker.StandardOutput.ReadLineAsync()
+    $script:outputPump = New-Object CareerLauncherOutput($script:worker)
     $script:stopAt = $null
     $script:pageUrl = $null
     $start.Enabled = $false
@@ -125,6 +140,8 @@ $form.Add_FormClosing({
 $timer = New-Object System.Windows.Forms.Timer
 $timer.Interval = 150
 $timer.Add_Tick({
+  $timer.Stop()
+  try {
   # WScript starts PowerShell hidden; show the GUI after its message loop starts.
   if ($script:firstDisplay) {
     $script:firstDisplay = $false
@@ -135,9 +152,8 @@ $timer.Add_Tick({
     $form.Activate()
   }
   if (-not $script:worker) { return }
-  while ($script:lineTask -and $script:lineTask.IsCompleted) {
-    $line = $script:lineTask.GetAwaiter().GetResult()
-    if ($null -eq $line) { $script:lineTask = $null; break }
+  $line = ''
+  while ($script:outputPump -and $script:outputPump.Lines.TryDequeue([ref]$line)) {
     if ($line.StartsWith('CW_LAUNCHER ')) {
       try {
         $message = $line.Substring(12) | ConvertFrom-Json
@@ -145,22 +161,27 @@ $timer.Add_Tick({
           $script:pageUrl = $message.url
           $status.Text = '运行中：' + $script:pageUrl
           $open.Enabled = $true
-          Start-Process $script:pageUrl
+          if (-not $NoBrowser) { Start-Process $script:pageUrl }
         } elseif ($message.state -eq 'error') { $status.Text = $message.message }
       } catch { $status.Text = '启动反馈错误：' + $_.Exception.Message }
     }
-    $script:lineTask = $script:worker.StandardOutput.ReadLineAsync()
   }
   if ($script:worker.HasExited) {
     $code = $script:worker.ExitCode
     if ($code -eq 0) { $status.Text = '已停止。数据库和配置已保留。' }
-    elseif ($script:errorTask.IsCompleted -and $script:errorTask.Result) {
-      $status.Text = '服务退出：' + $script:errorTask.Result.Substring(0, [Math]::Min(350, $script:errorTask.Result.Length))
+    elseif ($script:outputPump -and $script:outputPump.ErrorText) {
+      $status.Text = '服务退出：' + $script:outputPump.ErrorText.Substring(0, [Math]::Min(350, $script:outputPump.ErrorText.Length))
     }
     $script:worker.Dispose(); $script:worker = $null
-    $script:lineTask = $null; $script:stopAt = $null
+    $script:outputPump = $null; $script:stopAt = $null
     $start.Enabled = $true; $open.Enabled = $false; $stop.Enabled = $false
     if ($script:closing) { $form.Close() }
+  }
+  } catch {
+    $status.Text = '启动器状态读取失败：' + $_.Exception.Message
+    Stop-Workspace
+  } finally {
+    if (-not $form.IsDisposed) { $timer.Start() }
   }
 })
 try {

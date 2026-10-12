@@ -3,8 +3,10 @@ $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 $rootPath = Split-Path -Parent $PSScriptRoot
+$instancePath = $rootPath
+if ($env:WORKSPACE_CONFIG_PATH) { $instancePath += '|' + $env:WORKSPACE_CONFIG_PATH }
 $hash = [System.Security.Cryptography.SHA256]::Create()
-$key = [BitConverter]::ToString($hash.ComputeHash([Text.Encoding]::UTF8.GetBytes($rootPath.ToLowerInvariant()))).Replace('-', '')
+$key = [BitConverter]::ToString($hash.ComputeHash([Text.Encoding]::UTF8.GetBytes($instancePath.ToLowerInvariant()))).Replace('-', '')
 $hash.Dispose()
 Add-Type @"
 using System;
@@ -87,12 +89,40 @@ $form.Controls.Add($open)
 $stop = New-Object System.Windows.Forms.Button
 $stop.Text = '停止'
 $stop.SetBounds(384, 140, 158, 42)
-$stop.Enabled = $false
+$stop.Enabled = $true
 $form.Controls.Add($stop)
 $note = New-Object System.Windows.Forms.Label
-$note.Text = "关闭此窗口也会停止工作台。数据库和配置会保留。`n设置变更或更新后，请停止再启动。仅管理本启动器启动的服务。"
+$note.Text = "关闭窗口会收到系统托盘，服务继续运行。`n点击停止或托盘右键退出，才会停止服务并退出。"
 $note.SetBounds(24, 204, 520, 65)
 $form.Controls.Add($note)
+$trayMenu = New-Object System.Windows.Forms.ContextMenuStrip
+$trayShow = $trayMenu.Items.Add('显示启动器')
+[void]$trayMenu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
+$trayExit = $trayMenu.Items.Add('退出')
+$tray = New-Object System.Windows.Forms.NotifyIcon
+$tray.Icon = [System.Drawing.SystemIcons]::Application
+$tray.Text = 'Career Workspace'
+$tray.ContextMenuStrip = $trayMenu
+$tray.Visible = -not $CheckOnly
+$script:trayHintShown = $false
+function Show-Launcher {
+  $form.Show()
+  $form.WindowState = [System.Windows.Forms.FormWindowState]::Normal
+  [void][CareerLauncherWindow]::ShowWindowAsync($form.Handle, 9)
+  [void][CareerLauncherWindow]::SetForegroundWindow($form.Handle)
+  $form.Activate()
+}
+function Exit-Launcher {
+  $script:closing = $true
+  $start.Enabled = $false
+  $stop.Enabled = $false
+  $trayExit.Enabled = $false
+  if ($script:worker -and -not $script:worker.HasExited) { Stop-Workspace }
+  else { $form.Close() }
+}
+$trayShow.Add_Click({ Show-Launcher })
+$tray.Add_DoubleClick({ Show-Launcher })
+$trayExit.Add_Click({ Exit-Launcher })
 function Stop-Workspace {
   if ($script:worker -and -not $script:worker.HasExited -and -not $script:stopAt) {
     $status.Text = '正在停止并关闭数据库，请稍候…'
@@ -129,10 +159,20 @@ $start.Add_Click({
   }
 })
 $open.Add_Click({ if ($script:pageUrl) { Start-Process $script:pageUrl } })
-$stop.Add_Click({ Stop-Workspace })
+$stop.Add_Click({ Exit-Launcher })
 $form.Add_FormClosing({
+  param($sender, $eventArgs)
+  if (-not $script:closing -and $eventArgs.CloseReason -eq [System.Windows.Forms.CloseReason]::UserClosing) {
+    $eventArgs.Cancel = $true
+    $form.Hide()
+    if (-not $script:trayHintShown) {
+      $script:trayHintShown = $true
+      $tray.ShowBalloonTip(3000, 'Career Workspace', '已收到系统托盘。双击图标恢复；右键退出可停止服务。', [System.Windows.Forms.ToolTipIcon]::Info)
+    }
+    return
+  }
   if ($script:worker -and -not $script:worker.HasExited) {
-    $_.Cancel = $true
+    $eventArgs.Cancel = $true
     $script:closing = $true
     Stop-Workspace
   }
@@ -174,7 +214,7 @@ $timer.Add_Tick({
     }
     $script:worker.Dispose(); $script:worker = $null
     $script:outputPump = $null; $script:stopAt = $null
-    $start.Enabled = $true; $open.Enabled = $false; $stop.Enabled = $false
+    $start.Enabled = $true; $open.Enabled = $false; $stop.Enabled = $true
     if ($script:closing) { $form.Close() }
   }
   } catch {
@@ -189,6 +229,7 @@ try {
   $timer.Start()
   [System.Windows.Forms.Application]::Run($form)
 } finally {
+  $tray.Visible = $false; $tray.Dispose(); $trayMenu.Dispose()
   $timer.Stop(); $timer.Dispose(); $form.Dispose()
   if ($script:worker -and -not $script:worker.HasExited) { $script:worker.StandardInput.Close() }
   $mutex.ReleaseMutex(); $mutex.Dispose()

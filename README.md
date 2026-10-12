@@ -8,9 +8,14 @@ database, deployment setup, or Docker dependency.
 
 ## Windows launcher
 
+Closing the window with **X** hides it to the Windows system tray; services keep
+running. Double-click the tray icon or choose **显示启动器** to restore it (the icon
+may be under the taskbar's hidden-icons arrow). **停止** and tray **退出** both
+stop the services gracefully and exit the launcher. Reopening the desktop shortcut
+also restores the existing window. Records and settings are preserved.
+
 Double-click **Career Workspace.vbs** in the repository. The small launcher offers
 **启动并打开** (start and open), **打开页面** (open browser), and **停止** (stop).
-Closing its window also stops the services it owns. You may minimize it while working.
 Create a desktop shortcut to the VBS file for daily use. Node.js 22.12+ and dependencies
 (`npm ci`, once) are still required; this is a launcher, not a standalone installer.
 
@@ -24,7 +29,7 @@ It never takes over or kills an existing service. Closing a browser tab does not
 Stop closes Vite, cancels owned Career Ops tasks through the existing service lifecycle,
 and closes SQLite. Pending analysis may be interrupted, so finish it before stopping.
 Closing the launcher's input pipe also triggers shutdown after unexpected launcher exit.
-Records and artifacts remain on disk. Only one launcher per repository can be open. Double-clicking again restores the
+Records and artifacts remain on disk. Only one launcher per repository/configuration can be open. Double-clicking again restores the
 existing window, including when minimized; it does not start duplicate services.
 PowerShell uses process-scoped `RemoteSigned` for the local launcher script; no permanent
 execution-policy changes occur and organization policy remains authoritative. If a
@@ -836,7 +841,7 @@ status (unverified without reliable evidence). Missing candidate evidence stays 
 explicit workflow confirmation gates and known closed-posting evidence still apply.
 A snapshot evaluation is not a claim that the employer is currently accepting applications.
 
-Launcher GUI regression check (Windows, close the normal launcher first):
+Launcher GUI regression check (Windows, isolated configuration and ports):
 
 ```powershell
 powershell.exe -NoProfile -STA -ExecutionPolicy RemoteSigned -File tests/launcher-gui.ps1
